@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "네이버 지도 필지 관리 프로그램",
   "scripts": {
-    "build": "echo 'Static site - no build needed'",
-    "start": "echo 'Static site served'",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "test": "playwright test"
   },
   "devDependencies": {
