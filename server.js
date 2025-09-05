@@ -43,11 +43,11 @@ app.get('/api/vworld', async (req, res) => {
         
         // VWorld API 키들
         const apiKeys = [
+            '5090194F-13E2-3910-80E3-A9B3841ECFCB',
+            key || '5090194F-13E2-3910-80E3-A9B3841ECFCB',
             'CEB482F7-CF7C-333B-B02C-4E7111C3AC77',
-            key || '8C62256B-1D08-32FF-AB3C-1FCD67242196',
-            'BBAC532E-A56D-34CF-B520-CE68E8D6D52A',
-            'E5B1657B-9B6F-3A4B-91EF-98512BE931A1',
-            '6BF0B0F9-FB8F-3415-B5A3-5A5D1F8ED2EF'
+            '8C62256B-1D08-32FF-AB3C-1FCD67242196',
+            'BBAC532E-A56D-34CF-B520-CE68E8D6D52A'
         ];
         
         let lastError;

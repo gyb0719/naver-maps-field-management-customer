@@ -2,7 +2,7 @@
 const CONFIG = {
     NAVER_CLIENT_ID: 'xzbnwd2h1z',
     NAVER_CLIENT_SECRET: 'hD9Ur25tFD98XqcHUqhT9KcL5X3jckwR9VifsazY',
-    VWORLD_API_KEY: '8C62256B-1D08-32FF-AB3C-1FCD67242196',
+    VWORLD_API_KEY: '5090194F-13E2-3910-80E3-A9B3841ECFCB',
     GOOGLE_SHEETS_URL: '', // Google Apps Script URL (나중에 설정)
     
     // 지도 초기 설정
