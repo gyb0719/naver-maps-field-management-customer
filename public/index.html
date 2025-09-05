@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#667eea">
+    <title>NAVER Maps Field Management Program</title>
+    
+    <!-- 네이버 지도 API -->
+    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=xzbnwd2h1z&submodules=geocoder,panorama"></script>
+    
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/advanced-ui.css">
+    <link rel="stylesheet" href="/css/business-style.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 헤더 영역 -->
+        <header class="header">
+            <h1 style="color: white;">네이버 지도 필지 관리 프로그램</h1>
+            <div class="header-controls">
+                <!-- 지도 타입 선택 -->
+                <div class="map-type-selector">
+                    <button class="map-type-btn active" data-type="normal">일반지도</button>
+                    <button class="map-type-btn" data-type="satellite">위성지도</button>
+                    <button class="map-type-btn" data-type="cadastral">지적편집도</button>
+                    <button class="map-type-btn" data-type="street">거리뷰</button>
+                </div>
+                
+                <!-- 검색 -->
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="지번 또는 주소 검색">
+                    <button id="searchBtn">검색</button>
+                    <button id="searchToggleBtn" class="search-toggle-btn" title="검색 모드 on/off" onclick="toggleSearchMode()">
+                        검색 OFF
+                    </button>
+                </div>
+                
+                <!-- 캘린더 버튼 -->
+                <button id="calendarBtn" class="header-calendar-btn" onclick="openCalendarModal()" title="업무 캘린더">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+                        <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="2"/>
+                        <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <rect x="7" y="12" width="3" height="3" rx="0.5" fill="currentColor"/>
+                        <rect x="14" y="12" width="3" height="3" rx="0.5" fill="currentColor"/>
+                        <rect x="7" y="17" width="3" height="3" rx="0.5" fill="currentColor"/>
+                    </svg>
+                    <span>캘린더</span>
+                </button>
+                
+            </div>
+        </header>
+
+        <!-- 메인 컨테이너 -->
+        <div class="main-container">
+            <!-- 사이드바 -->
+            <aside class="sidebar">
+            <!-- 색상 선택 패널 -->
+            <div class="color-panel">
+                <h3>필지 색상</h3>
+                <div class="color-palette">
+                    <div class="color-item" data-color="#FF0000" style="background: #FF0000"></div>
+                    <div class="color-item" data-color="#FFA500" style="background: #FFA500"></div>
+                    <div class="color-item" data-color="#FFFF00" style="background: #FFFF00"></div>
+                    <div class="color-item" data-color="#90EE90" style="background: #90EE90"></div>
+                    <div class="color-item" data-color="#0000FF" style="background: #0000FF"></div>
+                    <div class="color-item" data-color="#000000" style="background: #000000"></div>
+                    <div class="color-item" data-color="#FFFFFF" style="background: #FFFFFF; border: 1px solid #ccc"></div>
+                    <div class="color-item" data-color="#87CEEB" style="background: #87CEEB"></div>
+                </div>
+                <div class="current-color">
+                    <span>선택된 색상:</span>
+                    <div id="currentColor" style="background: #FF0000"></div>
+                </div>
+                <div class="color-actions">
+                    <button type="button" id="clearSelectedBtn">
+                        선택 초기화
+                    </button>
+                    <button type="button" id="clearSearchBtn">
+                        검색 초기화
+                    </button>
+                </div>
+            </div>
+
+            <!-- 필지 정보 입력 -->
+            <div class="parcel-info">
+                <h3>필지 정보</h3>
+                <form id="parcelForm">
+                    <div class="form-group">
+                        <label>지번</label>
+                        <input type="text" id="parcelNumber" placeholder="예: 123-4">
+                    </div>
+                    <div class="form-group">
+                        <label>소유자 이름</label>
+                        <input type="text" id="ownerName" placeholder="홍길동">
+                    </div>
+                    <div class="form-group">
+                        <label>소유자 주소</label>
+                        <input type="text" id="ownerAddress" placeholder="서울시 강남구...">
+                    </div>
+                    <div class="form-group">
+                        <label>연락처</label>
+                        <input type="text" id="ownerContact" placeholder="010-1234-5678">
+                    </div>
+                    <div class="form-group">
+                        <label>메모</label>
+                        <textarea id="memo" rows="3" placeholder="추가 메모..." style="resize: vertical; min-height: 60px;"></textarea>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" id="saveBtn">저장</button>
+                        <button type="button" id="clearBtn">초기화</button>
+                    </div>
+                    <div class="export-buttons">
+                        <button type="button" id="exportCurrentBtn" onclick="exportCurrentParcelToGoogleSheets()">
+                            구글 시트 전송
+                        </button>
+                        <button type="button" id="copyDataBtn" onclick="copyDataToClipboard()">
+                            엑셀 복사
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            </aside>
+
+            <!-- 지도 영역 -->
+            <div class="map-container">
+                <div id="map"></div>
+                <div id="pano" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    
+    <!-- 캘린더 모달 -->
+    <div id="calendarModal" class="modal" style="display: none;">
+        <div class="modal-content calendar-modal">
+            <div class="modal-header">
+                <h2>업무 캘린더</h2>
+                <span class="close" onclick="closeCalendarModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <iframe id="calendarIframe" 
+                        src="https://calendar.google.com/calendar/embed?height=600&wkst=2&bgcolor=%23ffffff&ctz=Asia%2FSeoul&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=1&showTz=0&mode=MONTH&src=ko.south_korea%23holiday%40group.v.calendar.google.com&color=%230B8043" 
+                        style="border: 0; width: 100%; height: 500px;" 
+                        frameborder="0" 
+                        scrolling="yes">
+                </iframe>
+            </div>
+            <div class="modal-footer">
+                <input type="text" id="calendarUrl" placeholder="구글 캘린더 URL 또는 이메일">
+                <button onclick="updateCalendar()" class="btn-primary">적용</button>
+                <button onclick="closeCalendarModal()" class="btn-secondary">닫기</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 새로운 사이드 패널 (저장된 필지 관리) -->
+    <div id="advancedParcelPanel" class="advanced-panel">
+        <div class="ap-toggle" onclick="parcelManager.togglePanel()" title="필지 목록">
+            <span class="ap-toggle-icon">≡</span>
+        </div>
+        <div class="ap-content">
+            <div class="ap-header">
+                <h3>저장 필지 목록</h3>
+                <button class="ap-close" onclick="parcelManager.togglePanel()">✕</button>
+            </div>
+            <div id="parcelManagerContent" class="ap-body">
+                <!-- 여기에 ParcelManager가 렌더링됨 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // 디버깅용
+        window.addEventListener('load', function() {
+            console.log('window load event');
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded event');
+        });
+    </script>
+    <script src="/js/config-client.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/calendar.js"></script>
+    <script src="/js/map.js"></script>
+    <script src="/js/parcel.js"></script>
+    <script src="/js/parcel-manager.js"></script>
+    <script src="/js/search.js"></script>
+    <script src="/js/sheets.js"></script>
+    <script src="/js/mobile-handler.js"></script>
+</body>
+</html>

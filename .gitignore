@@ -1,0 +1,28 @@
+# 의존성
+node_modules/
+
+# 환경 변수
+.env
+.env.local
+.env.production
+
+# 로그
+*.log
+npm-debug.log*
+
+# OS 파일
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 임시 파일
+*.tmp
+temp/
+.next/
+
+.vercel

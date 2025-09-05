@@ -1,0 +1,445 @@
+/* 모바일 최적화 반응형 스타일 */
+
+/* 기본 모바일 퍼스트 설정 */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+}
+
+/* 태블릿 (768px ~ 1024px) */
+@media (max-width: 1024px) {
+    /* 헤더 조정 */
+    .header {
+        padding: 10px;
+        height: auto;
+    }
+    
+    .header h1 {
+        font-size: 18px;
+    }
+    
+    /* 사이드바 조정 */
+    .sidebar {
+        width: 280px;
+    }
+    
+    /* 지도 타입 선택자 */
+    .map-type-selector {
+        flex-wrap: wrap;
+    }
+    
+    .map-type-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+/* 모바일 (768px 이하) */
+@media (max-width: 768px) {
+    /* 전체 레이아웃 변경 */
+    .main-container {
+        flex-direction: column;
+        height: 100vh;
+    }
+    
+    /* 헤더 모바일 최적화 */
+    .header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 2000;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .header h1 {
+        font-size: 16px;
+        text-align: center;
+    }
+    
+    .header-controls {
+        width: 100%;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    /* 검색 컨테이너 모바일 */
+    .search-container {
+        width: 100%;
+        display: flex;
+        gap: 5px;
+    }
+    
+    .search-container input {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px; /* iOS 자동 줌 방지 */
+    }
+    
+    /* 지도 타입 선택자 모바일 */
+    .map-type-selector {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 5px;
+    }
+    
+    .map-type-btn {
+        padding: 8px 5px;
+        font-size: 11px;
+        border-radius: 8px;
+    }
+    
+    /* 사이드바 -> 하단 슬라이드 패널 */
+    .sidebar {
+        position: fixed;
+        bottom: -100%;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 70vh;
+        max-height: 500px;
+        z-index: 1500;
+        transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+    }
+    
+    .sidebar.open {
+        bottom: 0;
+    }
+    
+    /* 사이드바 핸들 추가 */
+    .sidebar::before {
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: #cbd5e0;
+        border-radius: 2px;
+    }
+    
+    /* 지도 영역 모바일 */
+    .map-container {
+        position: fixed;
+        top: 120px; /* 헤더 높이 */
+        left: 0;
+        right: 0;
+        bottom: 60px; /* 하단 네비게이션 공간 */
+        width: 100%;
+    }
+    
+    #map {
+        height: 100%;
+    }
+    
+    /* 색상 팔레트 모바일 */
+    .color-palette {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        padding: 10px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .color-item {
+        min-width: 35px;
+        height: 35px;
+    }
+    
+    /* 폼 버튼 모바일 */
+    .form-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    .form-buttons button {
+        padding: 12px;
+        font-size: 13px;
+        border-radius: 10px;
+    }
+    
+    /* 하단 네비게이션 바 (모바일 전용) */
+    .mobile-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        z-index: 1400;
+        padding: 8px 0;
+        justify-content: space-around;
+    }
+    
+    .mobile-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px;
+        background: none;
+        border: none;
+        color: #6c757d;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .mobile-nav-item.active {
+        color: #667eea;
+    }
+    
+    .mobile-nav-item span:first-child {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
+    
+    /* 플로팅 캘린더 버튼 모바일 */
+    .floating-calendar-btn {
+        bottom: 70px;
+        right: 15px;
+        width: 48px;
+        height: 48px;
+        font-size: 24px;
+    }
+    
+    /* 플로팅 캘린더 패널 모바일 */
+    .floating-calendar-panel {
+        width: calc(100vw - 20px) !important;
+        height: 80vh !important;
+        max-height: 600px;
+        left: 10px !important;
+        right: 10px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+    }
+    
+    /* 고급 패널 모바일 */
+    .advanced-panel {
+        width: 100%;
+        height: 85vh;
+        top: auto;
+        bottom: -100%;
+        right: 0;
+        transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 20px 20px 0 0;
+    }
+    
+    .advanced-panel.open {
+        bottom: 0;
+        right: 0;
+    }
+    
+    .ap-toggle {
+        display: none;
+    }
+    
+    /* 필지 카드 그리드 모바일 */
+    .pm-list.grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .pm-card {
+        font-size: 12px;
+    }
+    
+    .pm-card-content {
+        padding: 8px;
+    }
+    
+    .pm-card-content h4 {
+        font-size: 12px;
+    }
+    
+    /* 모달 모바일 */
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    
+    /* 터치 제스처 힌트 */
+    .swipe-hint {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        animation: fadeInOut 3s;
+        pointer-events: none;
+    }
+}
+
+/* 소형 모바일 (480px 이하) */
+@media (max-width: 480px) {
+    /* 헤더 더 컴팩트하게 */
+    .header h1 {
+        font-size: 14px;
+    }
+    
+    /* 지도 타입 버튼 더 작게 */
+    .map-type-btn {
+        padding: 6px 3px;
+        font-size: 10px;
+    }
+    
+    /* 필지 카드 1열로 */
+    .pm-list.grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* 폼 입력 필드 크기 조정 */
+    .form-group input,
+    .form-group textarea {
+        font-size: 16px; /* iOS 자동 줌 방지 */
+        padding: 12px;
+    }
+    
+    /* 색상 팔레트 더 작게 */
+    .color-item {
+        min-width: 30px;
+        height: 30px;
+    }
+}
+
+/* 가로 모드 최적화 */
+@media (max-width: 768px) and (orientation: landscape) {
+    /* 헤더 최소화 */
+    .header {
+        padding: 5px;
+    }
+    
+    .header h1 {
+        display: none;
+    }
+    
+    /* 지도 영역 확대 */
+    .map-container {
+        top: 60px;
+        bottom: 40px;
+    }
+    
+    /* 사이드바 높이 조정 */
+    .sidebar {
+        height: 80vh;
+    }
+    
+    /* 하단 네비게이션 컴팩트 */
+    .mobile-nav {
+        padding: 4px 0;
+    }
+    
+    .mobile-nav-item {
+        padding: 4px;
+    }
+    
+    .mobile-nav-item span:first-child {
+        font-size: 16px;
+    }
+    
+    .mobile-nav-item span:last-child {
+        display: none;
+    }
+}
+
+/* 터치 인터랙션 개선 */
+@media (hover: none) and (pointer: coarse) {
+    /* 터치 타겟 최소 크기 보장 */
+    button,
+    .clickable,
+    input[type="checkbox"],
+    input[type="radio"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* 호버 효과 제거 */
+    button:hover,
+    .clickable:hover {
+        transform: none;
+    }
+    
+    /* 터치 시 피드백 */
+    button:active,
+    .clickable:active {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+}
+
+/* 다크모드 지원 */
+@media (prefers-color-scheme: dark) {
+    /* 다크모드 스타일 추가 가능 */
+}
+
+/* 프린트 최적화 */
+@media print {
+    .header,
+    .sidebar,
+    .floating-calendar-btn,
+    .mobile-nav,
+    .advanced-panel {
+        display: none !important;
+    }
+    
+    .map-container {
+        position: static;
+        width: 100%;
+        height: 100vh;
+    }
+}
+
+/* 애니메이션 */
+@keyframes fadeInOut {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* iOS 안전 영역 대응 */
+@supports (padding: max(0px)) {
+    .header {
+        padding-top: max(10px, env(safe-area-inset-top));
+    }
+    
+    .mobile-nav {
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    
+    .sidebar {
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+}
+
+/* 모바일 전용 클래스 */
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-only {
+        display: block;
+    }
+    
+    .desktop-only {
+        display: none !important;
+    }
+}

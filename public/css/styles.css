@@ -1,0 +1,867 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* 헤더 스타일 */
+.header {
+    background: #2c3e50;
+    color: white;
+    padding: 0.6rem 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.header h1 {
+    font-size: 1.2rem;
+    margin-bottom: 0.3rem;
+}
+
+.header-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.map-type-selector {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.map-type-btn {
+    padding: 0.3rem 0.6rem;
+    background: #34495e;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-size: 0.8rem;
+}
+
+.map-type-btn:hover {
+    background: #4a5f7a;
+}
+
+.map-type-btn.active {
+    background: #3498db;
+}
+
+.search-container {
+    display: flex;
+    gap: 0.3rem;
+    flex: 1;
+    max-width: 400px;
+}
+
+#searchInput {
+    flex: 1;
+    padding: 0.3rem 0.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+#searchBtn, .clear-btn {
+    padding: 0.3rem 0.6rem;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-size: 0.8rem;
+}
+
+#searchBtn:hover {
+    background: #229954;
+}
+
+.clear-btn {
+    background: #e74c3c;
+}
+
+.clear-btn:hover {
+    background: #c0392b;
+}
+
+/* 메인 레이아웃 */
+.main-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 350px;
+    background: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    overflow-y: auto;
+    padding: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    height: 100%;
+}
+
+.map-container {
+    flex: 1;
+    position: relative;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* 거리뷰(파노라마) */
+#pano {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* 색상 패널 */
+.color-panel {
+    background: white;
+    border-radius: 8px;
+    padding: 0.6rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.color-panel h3 {
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+    color: #2c3e50;
+}
+
+.color-palette {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.25rem;
+    margin-bottom: 0.3rem;
+}
+
+.color-item {
+    width: 100%;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.color-item:hover {
+    transform: scale(1.1);
+}
+
+.color-item.active {
+    box-shadow: 0 0 0 3px #3498db;
+}
+
+.current-color {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+#currentColor {
+    width: 25px;
+    height: 25px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+/* 필지 정보 폼 */
+.parcel-info {
+    background: white;
+    border-radius: 8px;
+    padding: 0.6rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.parcel-info h3 {
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+    color: #2c3e50;
+}
+
+#parcelForm {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.form-group {
+    margin-bottom: 0.4rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.75rem;
+    color: #495057;
+    margin-bottom: 0.1rem;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 0.35rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.form-buttons {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+}
+
+.form-buttons button {
+    flex: 1;
+    padding: 0.4rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.3s;
+}
+
+#saveBtn {
+    background: #3498db;
+    color: white;
+}
+
+#saveBtn:hover {
+    background: #2980b9;
+}
+
+#clearBtn {
+    background: #95a5a6;
+    color: white;
+}
+
+#clearBtn:hover {
+    background: #7f8c8d;
+}
+
+#exportBtn {
+    background: #27ae60;
+    color: white;
+}
+
+#exportBtn:hover {
+    background: #229954;
+}
+
+/* 필지 목록 */
+.parcel-list {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.parcel-list h3 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+#parcelListContainer {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 0.5rem;
+}
+
+.parcel-item {
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.parcel-item:hover {
+    background: #f1f3f5;
+}
+
+.parcel-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.parcel-item-number {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.parcel-item-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid #dee2e6;
+}
+
+.parcel-item-info {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+/* 모달 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 500px;
+    position: relative;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #000;
+}
+
+/* 플로팅 캘린더 버튼 */
+.floating-calendar-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1500;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.floating-calendar-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+/* 플로팅 캘린더 패널 */
+.floating-calendar-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 700px;
+    height: 600px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.floating-calendar-panel.show {
+    display: flex;
+}
+
+.floating-calendar-panel.minimized {
+    height: 45px;
+    width: 250px;
+}
+
+.floating-calendar-panel.maximized {
+    width: 90vw;
+    height: 90vh;
+    max-width: 1200px;
+    max-height: 800px;
+}
+
+/* 캘린더 헤더 */
+.calendar-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+}
+
+.calendar-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.calendar-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.calendar-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background 0.2s;
+}
+
+.calendar-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.calendar-close {
+    background: rgba(231, 76, 60, 0.8);
+}
+
+.calendar-close:hover {
+    background: rgba(231, 76, 60, 1);
+}
+
+/* 캘린더 바디 */
+.calendar-body {
+    flex: 1;
+    padding: 1rem;
+    overflow: hidden;
+}
+
+.floating-calendar-panel.minimized .calendar-body {
+    display: none;
+}
+
+/* 캘린더 푸터 */
+.calendar-footer {
+    padding: 1rem;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.floating-calendar-panel.minimized .calendar-footer {
+    display: none;
+}
+
+.calendar-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.calendar-update-btn {
+    padding: 0.5rem 1.5rem;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.2s;
+}
+
+.calendar-update-btn:hover {
+    background: #2980b9;
+}
+
+/* 리사이즈 핸들 */
+.calendar-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: se-resize;
+    background: linear-gradient(135deg, transparent 50%, #dee2e6 50%);
+    border-radius: 0 0 12px 0;
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* 스크롤바 숨기기 */
+.sidebar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+.sidebar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+/* 낮은 해상도 화면 대응 */
+@media (max-height: 800px) {
+    .color-item {
+        height: 28px;
+    }
+    
+    .form-group {
+        margin-bottom: 0.3rem;
+    }
+    
+    .color-panel, .parcel-info {
+        padding: 0.4rem;
+    }
+    
+    .color-panel h3, .parcel-info h3 {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .form-group input,
+    .form-group textarea {
+        padding: 0.25rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 1.2rem;
+    }
+    
+    .header-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .main-container {
+        height: calc(100vh - 140px);
+    }
+    
+    .sidebar {
+        display: none;
+        position: absolute;
+        z-index: 999;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+    }
+    
+    .sidebar.show {
+        display: flex;
+    }
+    
+    .search-container {
+        max-width: 100%;
+    }
+}
+
+/* ==================== 하단 슬라이드 패널 ==================== */
+.parcel-list-toggle-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.parcel-list-toggle-btn:hover {
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.parcel-list-toggle-btn.panel-open {
+    bottom: 320px;
+}
+
+.btn-icon {
+    font-size: 20px;
+}
+
+.btn-count {
+    background: rgba(255, 255, 255, 0.3);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 14px;
+}
+
+/* 하단 패널 */
+.bottom-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 300px;
+    background: white;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.bottom-panel.open {
+    transform: translateY(0);
+}
+
+/* 패널 핸들 */
+.panel-handle {
+    height: 20px;
+    cursor: ns-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.handle-bar {
+    width: 50px;
+    height: 4px;
+    background: #cbd5e0;
+    border-radius: 2px;
+    transition: background 0.2s;
+}
+
+.panel-handle:hover .handle-bar {
+    background: #667eea;
+}
+
+/* 패널 헤더 */
+.panel-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f7f9fc;
+}
+
+.panel-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.panel-count {
+    color: #718096;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.panel-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.panel-btn {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.2s;
+}
+
+.panel-btn:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+/* 패널 본문 */
+.panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    background: white;
+}
+
+.parcel-list-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+}
+
+/* 필지 카드 스타일 */
+.parcel-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.parcel-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+    border-color: #667eea;
+}
+
+.parcel-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.parcel-address {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    flex: 1;
+}
+
+.parcel-color-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.parcel-info {
+    font-size: 12px;
+    color: #718096;
+    line-height: 1.4;
+}
+
+.parcel-info div {
+    margin: 4px 0;
+}
+
+.parcel-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.parcel-action-btn {
+    flex: 1;
+    padding: 6px;
+    background: #f7f9fc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.parcel-action-btn:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+}
+
+.parcel-action-btn.delete {
+    color: #f56565;
+}
+
+.parcel-action-btn.delete:hover {
+    background: #fff5f5;
+    border-color: #fc8181;
+}
+
+/* 스크롤바 스타일 */
+.panel-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.panel-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+}
+
+.panel-body::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}
