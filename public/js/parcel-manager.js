@@ -1,4 +1,4 @@
-// 고급 필지 관리 시스템
+// 고급 필지 관리 시스템 - 가상 스크롤 최적화
 class ParcelManager {
     constructor() {
         this.parcels = [];
@@ -10,6 +10,12 @@ class ParcelManager {
         this.isPanelOpen = false;
         this.isRendering = false; // 렌더링 중 플래그
         this.isComposing = false; // 한글 조합 중 플래그
+        
+        // 가상 스크롤 관련
+        this.virtualScroller = null;
+        this.useVirtualScroll = true; // 가상 스크롤 사용 여부
+        this.VIRTUAL_SCROLL_THRESHOLD = 100; // 100개 이상일 때 가상 스크롤 사용
+        
         this.init();
     }
     
@@ -432,6 +438,9 @@ class ParcelManager {
         this.filteredParcels.sort((a, b) => {
             return new Date(b.createdAt || b.timestamp) - new Date(a.createdAt || a.timestamp);
         });
+
+        // 가상 스크롤 업데이트
+        this.updateVirtualScroll();
     }
     
     togglePanel() {
@@ -665,19 +674,165 @@ class ParcelManager {
             ` : ''}
             
             <!-- 필지 목록 -->
-            <div class="pm-list table">
+            <div id="parcelListContainer" class="pm-list-container" style="height: 500px;">
                 ${this.filteredParcels.length === 0 ? `
                     <div class="pm-empty">
                         <div class="empty-icon">—</div>
                         <p class="empty-title">저장된 필지가 없습니다</p>
                         <p class="empty-subtitle">필지를 선택하고 저장 버튼을 눌러주세요</p>
                     </div>
-                ` : this.filteredParcels.map(parcel => this.renderParcelCard(parcel)).join('')}
+                ` : `<div id="virtualScrollList"></div>`}
             </div>
             
         `;
         
         this.attachEventListeners();
+        this.initVirtualScroll();
+    }
+
+    // 가상 스크롤 초기화
+    initVirtualScroll() {
+        // 데이터가 없거나 임계치 이하면 기본 렌더링
+        if (this.filteredParcels.length === 0 || 
+            this.filteredParcels.length < this.VIRTUAL_SCROLL_THRESHOLD) {
+            return;
+        }
+
+        const container = document.getElementById('virtualScrollList');
+        if (!container) return;
+
+        // 기존 가상 스크롤러 정리
+        if (this.virtualScroller) {
+            this.virtualScroller.destroy();
+        }
+
+        try {
+            // 가상 스크롤러 생성
+            this.virtualScroller = new VirtualScroller(container, {
+                itemHeight: this.viewMode === 'grid' ? 120 : 60,
+                overscan: 5,
+                renderItem: (item, index) => this.renderVirtualParcelItem(item, index),
+                onItemClick: (item, index, event) => this.handleVirtualItemClick(item, index, event),
+                className: 'virtual-parcel-item'
+            });
+
+            // 데이터 설정
+            this.virtualScroller.setItems(this.filteredParcels);
+            
+            console.log(`가상 스크롤 초기화 완료: ${this.filteredParcels.length}개 항목`);
+        } catch (error) {
+            console.error('가상 스크롤 초기화 실패:', error);
+            // 폴백: 기본 렌더링
+            this.renderFallbackList();
+        }
+    }
+
+    // 가상 스크롤 아이템 렌더링
+    renderVirtualParcelItem(parcel, index) {
+        const isSelected = this.selectedParcels.has(parcel.id);
+        const date = new Date(parcel.createdAt || parcel.timestamp).toLocaleDateString();
+        const color = parcel.color || '#ccc';
+        
+        if (this.viewMode === 'grid') {
+            return `
+                <div class="pm-card ${isSelected ? 'selected' : ''}" 
+                     data-id="${parcel.id}" data-index="${index}">
+                    <div class="pm-card-select">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} 
+                               data-action="toggle-select">
+                    </div>
+                    <div class="pm-card-color" style="background: ${color}"></div>
+                    <div class="pm-card-content">
+                        <h4>${parcel.parcelNumber || '지번 없음'}</h4>
+                        <div class="pm-card-info">
+                            ${parcel.ownerName ? `<div>👤 ${parcel.ownerName}</div>` : ''}
+                            ${parcel.ownerAddress ? `<div>🏠 ${parcel.ownerAddress}</div>` : ''}
+                            ${parcel.ownerContact ? `<div>📞 ${parcel.ownerContact}</div>` : ''}
+                            ${parcel.memo ? `<div>메모: ${parcel.memo.substring(0, 50)}${parcel.memo.length > 50 ? '...' : ''}</div>` : ''}
+                        </div>
+                        <p class="pm-card-date">${date}</p>
+                    </div>
+                    <div class="pm-card-actions">
+                        <button data-action="edit" data-id="${parcel.id}" class="btn-edit">수정</button>
+                        <button data-action="delete" data-id="${parcel.id}" class="btn-delete">삭제</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="pm-list-item ${isSelected ? 'selected' : ''}" 
+                     data-id="${parcel.id}" data-index="${index}">
+                    <input type="checkbox" ${isSelected ? 'checked' : ''} 
+                           data-action="toggle-select">
+                    <div class="pm-list-color" style="background: ${color}"></div>
+                    <div class="pm-list-content">
+                        <span class="pm-list-address">${parcel.parcelNumber || '지번 없음'}</span>
+                        <span class="pm-list-owner">${parcel.ownerName || '-'}</span>
+                        <span class="pm-list-contact">${parcel.ownerContact || '-'}</span>
+                        <span class="pm-list-memo">${parcel.memo ? parcel.memo.substring(0, 30) + '...' : '-'}</span>
+                        <span class="pm-list-date">${date}</span>
+                    </div>
+                    <div class="pm-list-actions">
+                        <button data-action="edit" data-id="${parcel.id}" class="btn-edit">수정</button>
+                        <button data-action="delete" data-id="${parcel.id}" class="btn-delete">삭제</button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // 가상 스크롤 아이템 클릭 처리
+    handleVirtualItemClick(item, index, event) {
+        const target = event.target;
+        const action = target.dataset.action;
+        const itemId = item.id;
+
+        switch (action) {
+            case 'toggle-select':
+                event.stopPropagation();
+                this.toggleSelection(itemId);
+                break;
+            case 'edit':
+                event.stopPropagation();
+                this.editParcel(itemId);
+                break;
+            case 'delete':
+                event.stopPropagation();
+                this.removeParcel(itemId);
+                break;
+            default:
+                // 아이템 클릭 시 지도에서 포커스
+                this.focusOnMap(itemId);
+                break;
+        }
+    }
+
+    // 폴백 렌더링 (가상 스크롤 실패 시)
+    renderFallbackList() {
+        const container = document.getElementById('virtualScrollList');
+        if (!container) return;
+
+        container.innerHTML = this.filteredParcels
+            .map(parcel => this.renderParcelCard(parcel))
+            .join('');
+    }
+
+    // 필터 변경 시 가상 스크롤 업데이트
+    updateVirtualScroll() {
+        if (!this.virtualScroller) {
+            this.initVirtualScroll();
+            return;
+        }
+
+        if (this.filteredParcels.length < this.VIRTUAL_SCROLL_THRESHOLD) {
+            // 임계치 이하면 가상 스크롤 비활성화
+            this.virtualScroller.destroy();
+            this.virtualScroller = null;
+            this.renderFallbackList();
+        } else {
+            // 데이터 업데이트
+            this.virtualScroller.setItems(this.filteredParcels);
+        }
     }
     
     // 리스트만 업데이트하는 메서드
