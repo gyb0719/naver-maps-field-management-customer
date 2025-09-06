@@ -59,6 +59,12 @@ class DataManager {
 
     async init() {
         try {
+            // IndexedDB 캐시 초기화
+            if (window.indexedDBCache) {
+                await window.indexedDBCache.init();
+                console.log('IndexedDB 캐시 초기화 완료');
+            }
+            
             await this.testSupabaseConnection();
             this.updateSyncStatus('synced');
             console.log('DataManager 초기화 완료 - Supabase 연결 성공');
@@ -878,11 +884,12 @@ class DataManager {
         }
     }
     
-    // 통합 저장 (충돌 방지 및 성능 최적화 적용)
+    // 통합 저장 (IndexedDB + localStorage + Supabase 3-tier)
     async save(parcels, options = {}) {
         const startTime = Date.now();
         const results = {
             local: false,
+            cache: false,
             cloud: false,
             errors: [],
             performance: {}
@@ -896,7 +903,7 @@ class DataManager {
                 return results;
             }
             
-            // 2. localStorage 저장 (필수)
+            // 2. localStorage 저장 (필수 - 즉시)
             results.local = this.saveLocal(parcels);
             if (!results.local) {
                 results.errors.push('localStorage 저장 실패');
@@ -906,12 +913,25 @@ class DataManager {
                 this.dataVersion = Date.now();
             }
 
-            // 3. 자동 클라우드 동기화 (디바운싱)
+            // 3. IndexedDB 캐시 저장 (백그라운드)
+            if (window.indexedDBCache && options.skipCache !== true) {
+                try {
+                    results.cache = await window.indexedDBCache.cacheParcels(parcels);
+                    if (results.cache) {
+                        console.log(`📦 ${parcels.length}개 필지 IndexedDB 캐시 완료`);
+                    }
+                } catch (error) {
+                    results.errors.push(`IndexedDB 캐시 실패: ${error.message}`);
+                    console.warn('IndexedDB 캐싱 실패, 계속 진행:', error);
+                }
+            }
+
+            // 4. 자동 클라우드 동기화 (디바운싱)
             if (this.autoSyncEnabled && options.skipAutoSync !== true) {
                 this.scheduleAutoSync(parcels, { ...options, dataVersion: this.dataVersion });
             }
 
-            // 4. 즉시 클라우드 동기화 (수동 요청시)
+            // 5. 즉시 클라우드 동기화 (수동 요청시)
             if (options.forceCloudSync === true) {
                 try {
                     results.cloud = await this.saveCloud(parcels, { ...options, dataVersion: this.dataVersion });
@@ -921,7 +941,7 @@ class DataManager {
                 }
             }
             
-            // 5. 성능 메트릭 기록
+            // 6. 성능 메트릭 기록
             const syncTime = Date.now() - startTime;
             this.performanceMetrics.syncTimes.push(syncTime);
             if (this.performanceMetrics.syncTimes.length > 100) {
@@ -931,7 +951,8 @@ class DataManager {
             results.performance = {
                 syncTime,
                 avgSyncTime: this.performanceMetrics.syncTimes.reduce((sum, time) => sum + time, 0) / this.performanceMetrics.syncTimes.length,
-                parcelCount: parcels.length
+                parcelCount: parcels.length,
+                cacheLayer: results.cache ? 'IndexedDB + localStorage' : 'localStorage만'
             };
 
         } catch (error) {
@@ -939,7 +960,7 @@ class DataManager {
             this.performanceMetrics.errorCounts.validation++;
         }
 
-        console.log('📊 최적화된 데이터 저장 결과:', results);
+        console.log('📊 3-tier 저장 시스템 결과:', results);
         return results;
     }
     
@@ -1209,26 +1230,56 @@ class DataManager {
         }
     }
 
-    // 통합 로드 (localStorage 우선, Supabase 백업)
+    // 통합 로드 (IndexedDB → localStorage → Supabase 순서)
     async load(options = {}) {
         let data = [];
+        const startTime = Date.now();
 
-        // 1. localStorage에서 로드 (빠름)
+        // 1. IndexedDB 캐시에서 먼저 시도 (가장 빠름)
+        if (window.indexedDBCache && options.skipCache !== true) {
+            try {
+                data = await window.indexedDBCache.getCachedParcels(options.filters || {});
+                if (data.length > 0) {
+                    console.log(`📦 IndexedDB 캐시에서 ${data.length}개 필지 로드됨 (${Date.now() - startTime}ms)`);
+                    return data;
+                }
+            } catch (error) {
+                console.warn('IndexedDB 캐시 로드 실패:', error);
+            }
+        }
+
+        // 2. localStorage에서 로드 (빠름)
         data = this.loadLocal();
         
         if (data.length > 0) {
-            console.log(`로컬에서 ${data.length}개 필지 로드됨`);
+            console.log(`💾 로컬에서 ${data.length}개 필지 로드됨 (${Date.now() - startTime}ms)`);
+            
+            // IndexedDB에 백그라운드 캐싱
+            if (window.indexedDBCache) {
+                window.indexedDBCache.cacheParcels(data).catch(err => {
+                    console.warn('IndexedDB 백그라운드 캐싱 실패:', err);
+                });
+            }
+            
             return data;
         }
 
-        // 2. localStorage가 비어있으면 Supabase에서 로드
+        // 3. localStorage가 비어있으면 Supabase에서 로드
         if (options.fallbackToCloud !== false && this.syncStatus !== 'offline') {
             try {
                 data = await this.loadCloud();
                 if (data.length > 0) {
                     // 로컬에도 캐시
                     this.saveLocal(data);
-                    console.log(`클라우드에서 ${data.length}개 필지 복원됨`);
+                    
+                    // IndexedDB에도 캐시
+                    if (window.indexedDBCache) {
+                        window.indexedDBCache.cacheParcels(data).catch(err => {
+                            console.warn('IndexedDB 클라우드 데이터 캐싱 실패:', err);
+                        });
+                    }
+                    
+                    console.log(`☁️ 클라우드에서 ${data.length}개 필지 복원됨 (${Date.now() - startTime}ms)`);
                 }
             } catch (error) {
                 console.error('클라우드 로드 실패:', error);
@@ -1282,12 +1333,22 @@ class DataManager {
         return true;
     }
     
-    // 확장된 통계 정보
-    getStats() {
+    // 확장된 통계 정보 (IndexedDB 캐시 포함)
+    async getStats() {
         const localData = this.loadLocal();
         const avgSyncTime = this.performanceMetrics.syncTimes.length > 0 
             ? this.performanceMetrics.syncTimes.reduce((sum, time) => sum + time, 0) / this.performanceMetrics.syncTimes.length 
             : 0;
+            
+        // IndexedDB 캐시 통계
+        let cacheStats = null;
+        if (window.indexedDBCache) {
+            try {
+                cacheStats = await window.indexedDBCache.getCacheStats();
+            } catch (error) {
+                console.warn('캐시 통계 조회 실패:', error);
+            }
+        }
             
         return {
             // 기본 데이터
@@ -1301,7 +1362,16 @@ class DataManager {
             performance: {
                 avgSyncTime: Math.round(avgSyncTime),
                 totalSyncs: this.performanceMetrics.syncTimes.length,
-                cacheHitRate: this.memoryCache.size > 0 ? '활성' : '비활성'
+                memoryCache: this.memoryCache.size > 0 ? '활성' : '비활성',
+                indexedDBCache: cacheStats ? '활성' : '비활성'
+            },
+            
+            // 캐시 통계
+            cache: cacheStats || {
+                parcels: { count: 0 },
+                searches: { count: 0 },
+                settings: { count: 0 },
+                estimatedSize: null
             },
             
             // 에러 통계
@@ -1316,7 +1386,14 @@ class DataManager {
             optimization: {
                 dynamicBatchSizes: this.optimizedBatchSizes.size,
                 autoSyncEnabled: this.autoSyncEnabled,
-                lastGoogleBackup: this.lastGoogleBackup ? new Date(this.lastGoogleBackup).toLocaleString() : '없음'
+                lastGoogleBackup: this.lastGoogleBackup ? new Date(this.lastGoogleBackup).toLocaleString() : '없음',
+                cachingLayers: [
+                    'Memory Cache',
+                    'IndexedDB Cache', 
+                    'localStorage',
+                    'Supabase Cloud',
+                    'Google Sheets Backup'
+                ].join(' → ')
             }
         };
     }
@@ -1392,10 +1469,73 @@ class DataManager {
     }
 }
 
+// IndexedDB 캐시 통합 헬퍼 메소드들
+DataManager.prototype.cacheSearchResult = async function(query, results) {
+    if (window.indexedDBCache) {
+        try {
+            await window.indexedDBCache.cacheSearchResult(query, results);
+        } catch (error) {
+            console.warn('검색 결과 캐싱 실패:', error);
+        }
+    }
+};
+
+DataManager.prototype.getCachedSearchResult = async function(query) {
+    if (window.indexedDBCache) {
+        try {
+            return await window.indexedDBCache.getCachedSearchResult(query);
+        } catch (error) {
+            console.warn('캐시된 검색 결과 조회 실패:', error);
+        }
+    }
+    return null;
+};
+
+DataManager.prototype.cacheSetting = async function(key, value, category = 'general') {
+    if (window.indexedDBCache) {
+        try {
+            await window.indexedDBCache.cacheSetting(key, value, category);
+        } catch (error) {
+            console.warn('설정 캐싱 실패:', error);
+        }
+    }
+};
+
+DataManager.prototype.getCachedSetting = async function(key, defaultValue = null) {
+    if (window.indexedDBCache) {
+        try {
+            return await window.indexedDBCache.getCachedSetting(key, defaultValue);
+        } catch (error) {
+            console.warn('캐시된 설정 조회 실패:', error);
+        }
+    }
+    return defaultValue;
+};
+
+DataManager.prototype.clearCache = async function(storeName = null) {
+    if (window.indexedDBCache) {
+        try {
+            if (storeName) {
+                await window.indexedDBCache.clearStore(storeName);
+                console.log(`${storeName} 캐시 스토어 정리 완료`);
+            } else {
+                // 모든 캐시 정리
+                const stores = ['parcels', 'searches', 'settings'];
+                for (const store of stores) {
+                    await window.indexedDBCache.clearStore(store);
+                }
+                console.log('모든 캐시 스토어 정리 완료');
+            }
+        } catch (error) {
+            console.error('캐시 정리 실패:', error);
+        }
+    }
+};
+
 // 전역 인스턴스 생성
 window.dataManager = new DataManager();
 
 // 레거시 호환성을 위한 별칭
 window.DataManager = DataManager;
 
-console.log('DataManager 로드 완료 - 하이브리드 데이터 시스템 준비됨');
+console.log('DataManager 로드 완료 - IndexedDB 캐시 통합 하이브리드 시스템 준비됨');
