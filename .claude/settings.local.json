@@ -69,7 +69,9 @@
       "Bash(set PORT=4000)",
       "Bash(node server.js)",
       "Bash(del publicmigration-simple.html publicmigration-ui.html)",
-      "Bash(move:*)"
+      "Bash(move:*)",
+      "Bash(git remote remove:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": [],
     "ask": []
