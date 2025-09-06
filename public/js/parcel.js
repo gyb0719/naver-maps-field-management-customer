@@ -4,8 +4,32 @@
 async function getParcelInfo(lat, lng) {
     console.log(`🏢 실제 필지 정보 조회 시작: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
     
-    // Config에서 API 키 가져오기 (기존 작동하던 방식으로 복원)
-    const apiKeys = CONFIG.VWORLD_API_KEYS;
+    // 🎯 ULTRATHINK: CONFIG 안전 체크 및 fallback 시스템
+    console.log('🔧 CONFIG 객체 상태 확인:', {
+        CONFIG_EXISTS: typeof CONFIG !== 'undefined',
+        VWORLD_API_KEYS_EXISTS: typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS,
+        KEYS_LENGTH: typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS ? CONFIG.VWORLD_API_KEYS.length : 0
+    });
+    
+    // Config에서 API 키 가져오기 + 안전한 fallback
+    const apiKeys = (typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS && CONFIG.VWORLD_API_KEYS.length > 0) 
+        ? CONFIG.VWORLD_API_KEYS 
+        : [
+            // ULTRATHINK Fallback 키들 (CONFIG 로드 실패 시)
+            '0A0DFD5D-0266-3FAB-8766-06E821646AF7',
+            'BBAC532E-A56D-34CF-B520-CE68E8D6D52A',
+            'E5B1657B-9B6F-3A4B-91EF-98512BE931A1',
+            '8C62256B-1D08-32FF-AB3C-1FCD67242196',
+            '6B854F88-4A5D-303C-B7C8-40858117A95E'
+        ];
+    
+    console.log(`🔑 ULTRATHINK: ${apiKeys.length}개 API 키 로드됨 (Config: ${typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS ? '성공' : 'Fallback 사용'})`);
+    
+    if (!apiKeys || apiKeys.length === 0) {
+        console.error('❌ ULTRATHINK: API 키를 전혀 로드할 수 없습니다!');
+        alert('API 설정 오류가 발생했습니다. 새로고침을 시도해주세요.');
+        return;
+    }
     
     // JSONP 방식으로 각 API 키 시도
     for (let i = 0; i < apiKeys.length; i++) {
@@ -112,8 +136,31 @@ async function loadParcelsInBounds(bounds) {
     const bbox = `${sw.lng()},${sw.lat()},${ne.lng()},${ne.lat()}`;
     console.log('🗺️ 검색 영역 (BBOX):', bbox);
     
-    // Config에서 API 키 가져오기
-    const apiKeys = CONFIG.VWORLD_API_KEYS;
+    // 🎯 ULTRATHINK: CONFIG 안전 체크 및 fallback 시스템 (영역 로드용)
+    console.log('🔧 CONFIG 객체 상태 확인 (영역 로드):', {
+        CONFIG_EXISTS: typeof CONFIG !== 'undefined',
+        VWORLD_API_KEYS_EXISTS: typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS,
+        KEYS_LENGTH: typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS ? CONFIG.VWORLD_API_KEYS.length : 0
+    });
+    
+    // Config에서 API 키 가져오기 + 안전한 fallback
+    const apiKeys = (typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS && CONFIG.VWORLD_API_KEYS.length > 0) 
+        ? CONFIG.VWORLD_API_KEYS 
+        : [
+            // ULTRATHINK Fallback 키들 (CONFIG 로드 실패 시)
+            '0A0DFD5D-0266-3FAB-8766-06E821646AF7',
+            'BBAC532E-A56D-34CF-B520-CE68E8D6D52A',
+            'E5B1657B-9B6F-3A4B-91EF-98512BE931A1',
+            '8C62256B-1D08-32FF-AB3C-1FCD67242196',
+            '6B854F88-4A5D-303C-B7C8-40858117A95E'
+        ];
+    
+    console.log(`🔑 ULTRATHINK 영역 로드: ${apiKeys.length}개 API 키 준비됨 (Config: ${typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS ? '성공' : 'Fallback 사용'})`);
+    
+    if (!apiKeys || apiKeys.length === 0) {
+        console.error('❌ ULTRATHINK 영역 로드: API 키를 전혀 로드할 수 없습니다!');
+        return;
+    }
     
     // CORS 우회를 위해 JSONP를 우선적으로 시도
     for (let keyIndex = 0; keyIndex < apiKeys.length; keyIndex++) {

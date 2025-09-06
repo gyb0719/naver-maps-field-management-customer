@@ -93,3 +93,18 @@ window.showClickParcels = showClickParcels;
 window.hideClickParcels = hideClickParcels;
 window.showSearchParcels = showSearchParcels;
 window.hideSearchParcels = hideSearchParcels;
+
+// 🎯 ULTRATHINK: 전역 CONFIG 등록 및 안전장치
+window.CONFIG = CONFIG;
+
+// CONFIG 로드 확인 및 디버깅
+console.log('🔧 ULTRATHINK CONFIG 로드 확인:', {
+    CONFIG_LOADED: typeof CONFIG !== 'undefined',
+    VWORLD_API_KEYS_COUNT: CONFIG && CONFIG.VWORLD_API_KEYS ? CONFIG.VWORLD_API_KEYS.length : 0,
+    NAVER_CLIENT_ID: CONFIG && CONFIG.NAVER_CLIENT_ID ? 'OK' : 'MISSING'
+});
+
+// 로드 실패 시 경고
+if (typeof CONFIG === 'undefined' || !CONFIG.VWORLD_API_KEYS) {
+    console.error('❌ ULTRATHINK: CONFIG 로드 실패 또는 불완전!');
+}
