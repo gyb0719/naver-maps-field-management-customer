@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연동 상태 실시간 테스트</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .status {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .progress { background: #ffeaa7; color: #856404; border: 1px solid #f39c12; }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        button.success { background: #28a745; }
+        button.danger { background: #dc3545; }
+        
+        .test-results {
+            background: #f1f3f4;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .integration-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .integration-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 실시간 연동 상태 테스트</h1>
+    
+    <div class="integration-grid">
+        <!-- Supabase 연동 테스트 -->
+        <div class="test-container">
+            <h2>🗄️ Supabase 데이터베이스</h2>
+            <div id="supabaseStatus" class="status info">연결 테스트 중...</div>
+            
+            <div>
+                <button onclick="testSupabaseConnection()">연결 테스트</button>
+                <button onclick="testSupabaseWrite()">쓰기 테스트</button>
+                <button onclick="testSupabaseRead()">읽기 테스트</button>
+            </div>
+            
+            <div id="supabaseResults" class="test-results"></div>
+        </div>
+        
+        <!-- Google Sheets 연동 테스트 -->
+        <div class="test-container">
+            <h2>📊 Google Sheets API</h2>
+            <div id="googleStatus" class="status info">API 로딩 중...</div>
+            
+            <div>
+                <button id="googleLogin" onclick="testGoogleLogin()">구글 로그인</button>
+                <button id="googleSheets" onclick="testGoogleSheets()" disabled>시트 생성 테스트</button>
+                <button id="googleWrite" onclick="testGoogleWrite()" disabled>데이터 쓰기 테스트</button>
+            </div>
+            
+            <div id="googleResults" class="test-results"></div>
+        </div>
+    </div>
+    
+    <!-- 통합 테스트 -->
+    <div class="test-container">
+        <h2>🔄 실시간 동기화 테스트</h2>
+        <div id="syncStatus" class="status info">대기 중...</div>
+        
+        <div>
+            <button onclick="testRealTimeSync()">실시간 동기화 테스트</button>
+            <button onclick="testBackupChain()">전체 백업 체인 테스트</button>
+            <button onclick="clearAllTests()" class="danger">테스트 결과 초기화</button>
+        </div>
+        
+        <div id="syncResults" class="test-results"></div>
+    </div>
+
+    <script>
+        // 환경 설정
+        const SUPABASE_URL = 'https://iccixxihdsvbgbkuwdqj.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljY2l4eGloZHN2Ymdia3V3ZHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwOTYyNjksImV4cCI6MjA3MjY3MjI2OX0.sEiGF7sImn2aY4Bl1463DVVZOmZuczTXfkgTS2-A074';
+        const GOOGLE_CLIENT_ID = '506368463001-um0b25os2vlep7mumonf63pcm9c9a0n3.apps.googleusercontent.com';
+        
+        let accessToken = null;
+        let testNumber = 1;
+        
+        // 페이지 로드시 초기화
+        window.addEventListener('load', async () => {
+            addLog('sync', '🚀 통합 테스트 시스템 시작');
+            
+            // Supabase 자동 테스트
+            testSupabaseConnection();
+            
+            // Google API 초기화
+            initializeGoogleAPI();
+        });
+        
+        // === Supabase 테스트 함수들 ===
+        async function testSupabaseConnection() {
+            updateStatus('supabase', 'progress', '🔍 Supabase 연결 테스트 중...');
+            addLog('supabase', `[테스트 ${testNumber++}] Supabase 연결 테스트 시작`);
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ping`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                addLog('supabase', `✅ 연결 성공: ${JSON.stringify(result)}`);
+                updateStatus('supabase', 'success', `✅ Supabase 연결 성공 (${result[0]?.status})`);
+                return true;
+                
+            } catch (error) {
+                addLog('supabase', `❌ 연결 실패: ${error.message}`);
+                updateStatus('supabase', 'error', `❌ Supabase 연결 실패: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testSupabaseWrite() {
+            updateStatus('supabase', 'progress', '🔄 Supabase 쓰기 테스트 중...');
+            addLog('supabase', `[테스트 ${testNumber++}] Supabase 쓰기 테스트 시작`);
+            
+            try {
+                const testData = {
+                    pnu: `test-${Date.now()}`,
+                    address: '테스트 주소',
+                    owner_name: '테스트 소유자',
+                    raw_data: { test: true, timestamp: Date.now() }
+                };
+                
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/parcels`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                addLog('supabase', `✅ 쓰기 성공: 레코드 ID ${result[0]?.id}`);
+                updateStatus('supabase', 'success', '✅ Supabase 쓰기 성공');
+                return result[0];
+                
+            } catch (error) {
+                addLog('supabase', `❌ 쓰기 실패: ${error.message}`);
+                updateStatus('supabase', 'error', `❌ Supabase 쓰기 실패: ${error.message}`);
+                return null;
+            }
+        }
+        
+        async function testSupabaseRead() {
+            updateStatus('supabase', 'progress', '🔍 Supabase 읽기 테스트 중...');
+            addLog('supabase', `[테스트 ${testNumber++}] Supabase 읽기 테스트 시작`);
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/parcels?limit=5`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                addLog('supabase', `✅ 읽기 성공: ${result.length}개 레코드 조회`);
+                updateStatus('supabase', 'success', `✅ Supabase 읽기 성공 (${result.length}개)`);
+                return result;
+                
+            } catch (error) {
+                addLog('supabase', `❌ 읽기 실패: ${error.message}`);
+                updateStatus('supabase', 'error', `❌ Supabase 읽기 실패: ${error.message}`);
+                return null;
+            }
+        }
+        
+        // === Google API 테스트 함수들 ===
+        async function initializeGoogleAPI() {
+            updateStatus('google', 'progress', '🔄 Google API 초기화 중...');
+            addLog('google', `[테스트 ${testNumber++}] Google API 초기화 시작`);
+            
+            try {
+                // Google API 스크립트 로드
+                await loadScript('https://apis.google.com/js/api.js');
+                await loadScript('https://accounts.google.com/gsi/client');
+                
+                // GAPI 초기화 대기
+                await new Promise((resolve, reject) => {
+                    const checkGapi = () => {
+                        if (window.gapi) {
+                            addLog('google', '✅ Google API 스크립트 로드 완료');
+                            resolve();
+                        } else {
+                            setTimeout(checkGapi, 100);
+                        }
+                    };
+                    checkGapi();
+                    setTimeout(() => reject(new Error('GAPI 로드 타임아웃')), 10000);
+                });
+                
+                updateStatus('google', 'success', '✅ Google API 준비 완료');
+                document.getElementById('googleLogin').disabled = false;
+                
+            } catch (error) {
+                addLog('google', `❌ API 초기화 실패: ${error.message}`);
+                updateStatus('google', 'error', `❌ Google API 초기화 실패: ${error.message}`);
+            }
+        }
+        
+        async function testGoogleLogin() {
+            updateStatus('google', 'progress', '🔐 Google 로그인 시도 중...');
+            addLog('google', `[테스트 ${testNumber++}] Google 로그인 테스트 시작`);
+            
+            try {
+                // OAuth 토큰 클라이언트 초기화
+                const tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: GOOGLE_CLIENT_ID,
+                    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+                    callback: (response) => {
+                        if (response.access_token) {
+                            accessToken = response.access_token;
+                            addLog('google', '✅ Google 로그인 성공');
+                            updateStatus('google', 'success', '✅ Google 로그인 성공');
+                            document.getElementById('googleSheets').disabled = false;
+                            document.getElementById('googleWrite').disabled = false;
+                        } else {
+                            throw new Error('토큰 받기 실패');
+                        }
+                    }
+                });
+                
+                // 토큰 요청
+                tokenClient.requestAccessToken();
+                
+            } catch (error) {
+                addLog('google', `❌ 로그인 실패: ${error.message}`);
+                updateStatus('google', 'error', `❌ Google 로그인 실패: ${error.message}`);
+            }
+        }
+        
+        async function testGoogleSheets() {
+            if (!accessToken) {
+                addLog('google', '❌ 먼저 Google 로그인을 해주세요');
+                return;
+            }
+            
+            updateStatus('google', 'progress', '📊 Google Sheets 테스트 중...');
+            addLog('google', `[테스트 ${testNumber++}] Google Sheets 생성 테스트 시작`);
+            
+            try {
+                // GAPI 클라이언트 로드
+                await new Promise((resolve, reject) => {
+                    gapi.load('client', {
+                        callback: resolve,
+                        onerror: reject
+                    });
+                });
+                
+                // 클라이언트 초기화
+                await gapi.client.init({});
+                gapi.client.setToken({ access_token: accessToken });
+                
+                // Sheets API 로드
+                await gapi.client.load('sheets', 'v4');
+                
+                // 테스트 스프레드시트 생성
+                const response = await gapi.client.sheets.spreadsheets.create({
+                    properties: {
+                        title: `네이버맵 연동테스트 - ${new Date().toLocaleString()}`
+                    }
+                });
+                
+                const spreadsheetId = response.result.spreadsheetId;
+                const spreadsheetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+                
+                addLog('google', `✅ 스프레드시트 생성 성공`);
+                addLog('google', `📋 ID: ${spreadsheetId}`);
+                addLog('google', `🔗 URL: ${spreadsheetUrl}`);
+                updateStatus('google', 'success', '✅ Google Sheets 생성 성공');
+                
+                window.testSpreadsheetId = spreadsheetId;
+                return spreadsheetId;
+                
+            } catch (error) {
+                addLog('google', `❌ Sheets 테스트 실패: ${error.message}`);
+                updateStatus('google', 'error', `❌ Google Sheets 실패: ${error.message}`);
+            }
+        }
+        
+        async function testGoogleWrite() {
+            if (!accessToken || !window.testSpreadsheetId) {
+                addLog('google', '❌ 먼저 Google Sheets 생성을 해주세요');
+                return;
+            }
+            
+            updateStatus('google', 'progress', '✍️ Google Sheets 데이터 쓰기 중...');
+            addLog('google', `[테스트 ${testNumber++}] Google Sheets 데이터 쓰기 테스트`);
+            
+            try {
+                const testData = [
+                    ['지번', '소유자', '주소', '테스트시간'],
+                    [`test-${Date.now()}`, '테스트소유자', '테스트주소', new Date().toLocaleString()]
+                ];
+                
+                await gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: window.testSpreadsheetId,
+                    range: 'A1:D2',
+                    valueInputOption: 'USER_ENTERED',
+                    resource: {
+                        values: testData
+                    }
+                });
+                
+                addLog('google', '✅ 데이터 쓰기 성공');
+                updateStatus('google', 'success', '✅ Google Sheets 쓰기 성공');
+                
+            } catch (error) {
+                addLog('google', `❌ 데이터 쓰기 실패: ${error.message}`);
+                updateStatus('google', 'error', `❌ Google Sheets 쓰기 실패: ${error.message}`);
+            }
+        }
+        
+        // === 통합 테스트 함수들 ===
+        async function testRealTimeSync() {
+            updateStatus('sync', 'progress', '🔄 실시간 동기화 테스트 중...');
+            addLog('sync', `[테스트 ${testNumber++}] 실시간 동기화 테스트 시작`);
+            
+            try {
+                // 1. Supabase에 데이터 쓰기
+                addLog('sync', '1단계: Supabase 데이터 저장');
+                const supabaseData = await testSupabaseWrite();
+                
+                if (!supabaseData) {
+                    throw new Error('Supabase 데이터 저장 실패');
+                }
+                
+                // 2. Google Sheets 동기화 (로그인 상태인 경우만)
+                if (accessToken && window.testSpreadsheetId) {
+                    addLog('sync', '2단계: Google Sheets 동기화');
+                    await testGoogleWrite();
+                }
+                
+                addLog('sync', '✅ 실시간 동기화 테스트 완료');
+                updateStatus('sync', 'success', '✅ 실시간 동기화 성공');
+                
+            } catch (error) {
+                addLog('sync', `❌ 동기화 테스트 실패: ${error.message}`);
+                updateStatus('sync', 'error', `❌ 동기화 실패: ${error.message}`);
+            }
+        }
+        
+        async function testBackupChain() {
+            updateStatus('sync', 'progress', '🔗 전체 백업 체인 테스트 중...');
+            addLog('sync', `[테스트 ${testNumber++}] 전체 백업 체인 테스트 시작`);
+            
+            const results = {
+                supabase: false,
+                google: false
+            };
+            
+            try {
+                // Supabase 연결 테스트
+                results.supabase = await testSupabaseConnection();
+                
+                // Google API 테스트
+                if (accessToken) {
+                    addLog('sync', 'Google API 인증 확인됨');
+                    results.google = true;
+                } else {
+                    addLog('sync', '⚠️ Google API 로그인 필요');
+                }
+                
+                const successCount = Object.values(results).filter(Boolean).length;
+                addLog('sync', `📊 백업 체인 상태: ${successCount}/2 연동 성공`);
+                
+                if (successCount === 2) {
+                    updateStatus('sync', 'success', '✅ 전체 백업 체인 정상');
+                } else if (successCount === 1) {
+                    updateStatus('sync', 'warning', '⚠️ 부분적 백업 체인 (1/2)');
+                } else {
+                    updateStatus('sync', 'error', '❌ 백업 체인 연결 실패');
+                }
+                
+            } catch (error) {
+                addLog('sync', `❌ 백업 체인 테스트 실패: ${error.message}`);
+                updateStatus('sync', 'error', `❌ 백업 체인 실패: ${error.message}`);
+            }
+        }
+        
+        // === 유틸리티 함수들 ===
+        function updateStatus(type, status, message) {
+            const element = document.getElementById(`${type}Status`);
+            element.className = `status ${status}`;
+            element.textContent = message;
+        }
+        
+        function addLog(type, message) {
+            const element = document.getElementById(`${type}Results`);
+            const time = new Date().toLocaleTimeString();
+            element.innerHTML += `<div>[${time}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+        
+        function clearAllTests() {
+            ['supabase', 'google', 'sync'].forEach(type => {
+                document.getElementById(`${type}Results`).innerHTML = '';
+                updateStatus(type, 'info', '테스트 결과 초기화됨');
+            });
+            testNumber = 1;
+        }
+        
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                if (document.querySelector(`script[src="${src}"]`)) {
+                    resolve();
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`스크립트 로드 실패: ${src}`));
+                document.head.appendChild(script);
+            });
+        }
+    </script>
+</body>
+</html>
