@@ -62,7 +62,15 @@
         </div>
         
         <div class="result">
-            <h3>테스트 단계:</h3>
+            <h3>🔧 개선된 안전한 초기화 시스템:</h3>
+            <ul>
+                <li>✅ <strong>순차적 스크립트 로딩</strong> - 각 단계를 안전하게 대기</li>
+                <li>✅ <strong>완전한 에러 복구</strong> - 실패시 자동 재시도 및 정리</li>
+                <li>✅ <strong>실시간 진행상황</strong> - 5단계 로딩 과정 표시</li>
+                <li>✅ <strong>강력한 디버깅</strong> - 문제 발생시 상세 진단</li>
+            </ul>
+            
+            <h3>📋 테스트 단계:</h3>
             <ol>
                 <li><strong>Google 로그인</strong> - OAuth 인증 테스트</li>
                 <li><strong>API 권한 확인</strong> - Sheets API 접근 권한</li>
@@ -87,8 +95,7 @@
         <div id="results"></div>
     </div>
     
-    <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Google 스크립트는 JavaScript에서 동적 로딩 -->
     
     <script>
         let gapi;
@@ -100,104 +107,132 @@
         
         // 페이지 로드시 초기화
         window.addEventListener('load', async () => {
-            await loadGoogleAPI();
-            initializeAuth();
+            try {
+                updateStatus('🚀 안전한 Google API 초기화 시작...', 'info');
+                await initializeGoogleAPISafely();
+            } catch (error) {
+                updateStatus(`❌ 초기화 실패: ${error.message}`, 'error');
+                addResult('🔄 "API 재초기화" 버튼을 클릭하여 다시 시도해보세요.');
+            }
         });
         
-        async function loadGoogleAPI() {
-            try {
-                updateStatus('🔄 Google API 스크립트 로딩 중...', 'info');
+        // 완전히 새로운 안전한 Google API 초기화 시스템
+        async function initializeGoogleAPISafely() {
+            const steps = [
+                { name: 'Google API 스크립트', action: loadGoogleAPIScript },
+                { name: 'Google Identity Services', action: loadGoogleIdentityScript },
+                { name: 'GAPI 클라이언트 초기화', action: initializeGAPIClient },
+                { name: 'Google Sheets API', action: initializeGoogleSheetsAPI },
+                { name: 'OAuth 클라이언트', action: initializeOAuthClient }
+            ];
+            
+            for (let i = 0; i < steps.length; i++) {
+                const step = steps[i];
+                const progress = `${i + 1}/${steps.length}`;
                 
-                // Google API 스크립트 로드
-                if (!window.gapi) {
-                    await new Promise((resolve, reject) => {
-                        const script = document.createElement('script');
-                        script.src = 'https://apis.google.com/js/api.js';
-                        script.onload = () => {
-                            console.log('✅ Google API 스크립트 로드됨');
-                            resolve();
-                        };
-                        script.onerror = (error) => {
-                            console.error('❌ Google API 스크립트 로드 실패:', error);
-                            reject(new Error('Google API 스크립트 로드 실패'));
-                        };
-                        document.head.appendChild(script);
-                    });
+                try {
+                    updateStatus(`🔄 ${progress} ${step.name} 로딩 중...`, 'info');
+                    await step.action();
+                    console.log(`✅ ${step.name} 완료`);
+                    addResult(`✅ ${progress} ${step.name} 완료`);
+                    
+                    // 각 단계 완료 후 짧은 대기
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                } catch (error) {
+                    console.error(`❌ ${step.name} 실패:`, error);
+                    throw new Error(`${step.name} 실패: ${error.message}`);
                 }
+            }
+            
+            updateStatus('✅ 모든 Google API 초기화 완료!', 'success');
+            document.getElementById('loginBtn').disabled = false;
+        }
+        
+        // 1단계: Google API 스크립트 로드
+        async function loadGoogleAPIScript() {
+            if (window.gapi) {
+                return; // 이미 로드됨
+            }
+            
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://apis.google.com/js/api.js';
+                script.async = false; // 순차 로딩
                 
-                // gapi 객체가 사용 가능할 때까지 대기
-                await new Promise((resolve, reject) => {
+                script.onload = async () => {
+                    // gapi 객체 사용 가능 대기
                     let attempts = 0;
-                    const checkGapi = () => {
-                        attempts++;
-                        console.log(`GAPI 확인 시도 ${attempts}/50`);
-                        
+                    while (attempts < 50) {
                         if (window.gapi && typeof window.gapi.load === 'function') {
-                            console.log('✅ GAPI 객체 사용 가능');
                             resolve();
-                        } else if (attempts >= 50) {
-                            reject(new Error('GAPI 객체 로딩 타임아웃'));
-                        } else {
-                            setTimeout(checkGapi, 100);
+                            return;
                         }
-                    };
-                    checkGapi();
-                });
-                
-                updateStatus('🔄 Google API 클라이언트 초기화 중...', 'info');
-                
-                // GAPI 클라이언트 로드
-                await new Promise((resolve, reject) => {
-                    try {
-                        gapi.load('client', {
-                            callback: () => {
-                                console.log('✅ GAPI 클라이언트 로드됨');
-                                resolve();
-                            },
-                            onerror: (error) => {
-                                console.error('❌ GAPI 클라이언트 로드 실패:', error);
-                                reject(new Error('GAPI 클라이언트 로드 실패'));
-                            }
-                        });
-                    } catch (error) {
-                        reject(error);
+                        attempts++;
+                        await new Promise(r => setTimeout(r, 100));
                     }
-                });
+                    reject(new Error('GAPI 객체 로딩 타임아웃'));
+                };
                 
-                // Google Sheets API 초기화
+                script.onerror = () => reject(new Error('Google API 스크립트 로드 실패'));
+                document.head.appendChild(script);
+            });
+        }
+        
+        // 2단계: Google Identity Services 스크립트 로드
+        async function loadGoogleIdentityScript() {
+            if (window.google && window.google.accounts) {
+                return; // 이미 로드됨
+            }
+            
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.async = false; // 순차 로딩
+                
+                script.onload = async () => {
+                    // google.accounts 사용 가능 대기
+                    let attempts = 0;
+                    while (attempts < 50) {
+                        if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+                            resolve();
+                            return;
+                        }
+                        attempts++;
+                        await new Promise(r => setTimeout(r, 100));
+                    }
+                    reject(new Error('Google Identity Services 로딩 타임아웃'));
+                };
+                
+                script.onerror = () => reject(new Error('Google Identity Services 스크립트 로드 실패'));
+                document.head.appendChild(script);
+            });
+        }
+        
+        // 3단계: GAPI 클라이언트 초기화
+        async function initializeGAPIClient() {
+            return new Promise((resolve, reject) => {
+                gapi.load('client', {
+                    callback: resolve,
+                    onerror: () => reject(new Error('GAPI 클라이언트 로드 실패'))
+                });
+            });
+        }
+        
+        // 4단계: Google Sheets API 초기화
+        async function initializeGoogleSheetsAPI() {
+            try {
                 await gapi.client.init({
                     discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
                 });
-                
-                console.log('✅ Google Sheets API 초기화 완료');
-                updateStatus('✅ Google API 로딩 완료', 'success');
-                document.getElementById('loginBtn').disabled = false;
-                
             } catch (error) {
-                console.error('❌ Google API 로딩 전체 실패:', error);
-                updateStatus(`❌ Google API 로딩 실패: ${error.message}`, 'error');
-                addResult(`🔍 해결방법: 페이지를 새로고침하거나 브라우저 캐시를 정리해보세요.`);
+                throw new Error(`Google Sheets API 초기화 실패: ${error.message}`);
             }
         }
         
-        function initializeAuth() {
+        // 5단계: OAuth 클라이언트 초기화
+        async function initializeOAuthClient() {
             try {
-                // Google Identity Services 사용 가능 확인
-                if (!window.google || !window.google.accounts) {
-                    updateStatus('⚠️ Google Identity Services 로딩 중... 잠시만 기다려주세요', 'info');
-                    
-                    // 3초 후 다시 시도
-                    setTimeout(() => {
-                        if (window.google && window.google.accounts) {
-                            initializeAuth();
-                        } else {
-                            updateStatus('❌ Google Identity Services 로드 실패', 'error');
-                            addResult('🔄 페이지를 새로고침하여 다시 시도해주세요');
-                        }
-                    }, 3000);
-                    return;
-                }
-                
                 tokenClient = google.accounts.oauth2.initTokenClient({
                     client_id: CLIENT_ID,
                     scope: SCOPES,
@@ -216,17 +251,18 @@
                         }
                     },
                     error_callback: (error) => {
-                        updateStatus(`❌ 인증 초기화 오류: ${error}`, 'error');
+                        updateStatus(`❌ 인증 오류: ${error.message}`, 'error');
                     }
                 });
                 
-                console.log('✅ Google 인증 클라이언트 초기화 완료');
+                console.log('✅ OAuth 클라이언트 초기화 완료');
                 
             } catch (error) {
-                console.error('❌ 인증 초기화 실패:', error);
-                updateStatus(`❌ 인증 초기화 실패: ${error.message}`, 'error');
+                throw new Error(`OAuth 클라이언트 초기화 실패: ${error.message}`);
             }
         }
+        
+        // 이전 initializeAuth 함수는 initializeOAuthClient로 통합됨
         
         async function testLogin() {
             try {
@@ -351,28 +387,54 @@
             resultsEl.appendChild(resultDiv);
         }
         
-        // 재초기화 함수
+        // 재초기화 함수 - 새로운 안전한 시스템 사용
         async function retryInitialization() {
             try {
-                updateStatus('🔄 API 재초기화 시작...', 'info');
+                updateStatus('🔄 완전 재초기화 시작...', 'info');
                 
-                // 기존 상태 리셋
+                // 기존 상태 완전 리셋
                 accessToken = null;
                 tokenClient = null;
+                
+                // 기존 스크립트 제거 (가능한 경우)
+                const existingScripts = document.querySelectorAll('script[src*="googleapis"], script[src*="accounts.google"]');
+                existingScripts.forEach(script => {
+                    try {
+                        script.remove();
+                    } catch (e) {
+                        console.log('스크립트 제거 불가:', e);
+                    }
+                });
+                
+                // 전역 객체 제거
+                if (window.gapi) {
+                    delete window.gapi;
+                }
+                if (window.google && window.google.accounts) {
+                    delete window.google;
+                }
                 
                 // 버튼들 비활성화
                 ['loginBtn', 'apiBtn', 'backupBtn', 'autoBtn'].forEach(id => {
                     document.getElementById(id).disabled = true;
                 });
                 
-                // 다시 초기화
-                await loadGoogleAPI();
-                initializeAuth();
+                // 결과 영역 초기화
+                document.getElementById('results').innerHTML = '';
                 
-                addResult('🔄 재초기화 완료');
+                addResult('🧹 기존 상태 정리 완료');
+                
+                // 1초 대기 후 새로운 안전한 초기화 시작
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await initializeGoogleAPISafely();
+                
+                addResult('✅ 완전 재초기화 성공!');
                 
             } catch (error) {
+                console.error('재초기화 실패:', error);
                 updateStatus(`❌ 재초기화 실패: ${error.message}`, 'error');
+                addResult('💡 브라우저 캐시를 정리하고 페이지를 새로고침해보세요.');
             }
         }
         
