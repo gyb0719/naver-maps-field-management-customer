@@ -126,6 +126,15 @@ body {
 #map {
     width: 100%;
     height: 100%;
+    cursor: auto !important;
+}
+
+#map * {
+    cursor: auto !important;
+}
+
+.naver-maps-api * {
+    cursor: auto !important;
 }
 
 /* 거리뷰(파노라마) */
@@ -244,6 +253,7 @@ body {
     display: flex;
     gap: 0.3rem;
     margin-top: 0.5rem;
+    position: relative;
 }
 
 .form-buttons button {
@@ -548,6 +558,70 @@ body {
     }
 }
 
+/* 토스트 메시지 */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #28a745;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-size: 14px;
+    z-index: 10000;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(10px);
+}
+
+.toast.success {
+    background: #28a745;
+}
+
+.toast.info {
+    background: #17a2b8;
+}
+
+.toast.warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.toast.error {
+    background: #dc3545;
+}
+
+/* 저장 버튼 근처 토스트 */
+.toast-near-button {
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #28a745;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.2s ease;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.toast-near-button.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-5px);
+}
+
 /* 스크롤바 숨기기 */
 .sidebar {
     scrollbar-width: none; /* Firefox */
@@ -760,6 +834,8 @@ body {
     overflow-y: auto;
     padding: 15px;
     background: white;
+    /* 🎯 ULTRATHINK: 기본적인 스크롤 최적화만 적용 */
+    -webkit-overflow-scrolling: touch;
 }
 
 .parcel-list-container {

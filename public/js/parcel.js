@@ -27,7 +27,7 @@ async function getParcelInfo(lat, lng) {
     
     if (!apiKeys || apiKeys.length === 0) {
         console.error('❌ ULTRATHINK: API 키를 전혀 로드할 수 없습니다!');
-        alert('API 설정 오류가 발생했습니다. 새로고침을 시도해주세요.');
+        showToast('API 설정 오류', 'error');
         return;
     }
     
@@ -48,7 +48,7 @@ async function getParcelInfo(lat, lng) {
     // 모든 키로 실패한 경우
     console.log('⚠️ 모든 API 키로 필지 정보를 가져오지 못했습니다.');
     console.log('💡 VWorld API는 CORS 정책으로 인해 JSONP만 지원합니다.');
-    alert('해당 위치의 필지 정보를 찾을 수 없습니다.');
+    showToast('필지 정보 없음', 'warning');
 }
 
 // JSONP 방식으로 VWorld API 호출
@@ -539,12 +539,79 @@ function displayParcelInfo(parcel) {
     }
 }
 
+// 일반 토스트 메시지 표시 (화면 중앙 상단)
+function showToast(message, type = 'success') {
+    // 기존 토스트가 있으면 제거
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // 새 토스트 생성
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    
+    // body에 추가
+    document.body.appendChild(toast);
+    
+    // 애니메이션 시작
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // 2초 후 자동 제거
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.remove();
+            }
+        }, 300);
+    }, 2000);
+}
+
+// 저장 버튼 근처에 토스트 메시지 표시
+function showToastNearButton(message, type = 'success') {
+    // 기존 토스트가 있으면 제거
+    const existingToast = document.querySelector('.toast-near-button');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // 새 토스트 생성
+    const toast = document.createElement('div');
+    toast.className = `toast-near-button ${type}`;
+    toast.textContent = message;
+    
+    // 저장 버튼의 부모 요소(form-buttons)에 추가
+    const saveBtn = document.getElementById('saveBtn');
+    if (saveBtn && saveBtn.parentElement) {
+        saveBtn.parentElement.appendChild(toast);
+        
+        // 애니메이션 시작
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+        
+        // 2초 후 자동 제거
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 200);
+        }, 2000);
+    }
+}
+
 // 필지 데이터 저장 (실시간 동기화 적용)
 async function saveParcelData() {
     const parcelNumber = document.getElementById('parcelNumber').value;
     
     if (!parcelNumber) {
-        alert('지번을 입력해주세요.');
+        showToastNearButton('지번 입력 필요', 'warning');
         return;
     }
     
@@ -699,7 +766,7 @@ async function saveParcelData() {
             console.log('백업 저장 완료');
         } catch (backupError) {
             console.error('백업 저장도 실패:', backupError);
-            alert('저장에 실패했습니다. 다시 시도해주세요.');
+            showToastNearButton('저장 실패', 'error');
             return;
         }
     }
@@ -761,14 +828,14 @@ async function saveParcelData() {
     console.log('✅ 저장 완료 - 폼 초기화 (지번 유지):', savedParcelNumber);
     
     // 동기화 상태에 따른 메시지
-    let message = '저장되었습니다.';
+    let message = '저장됨';
     if (syncResult.local && syncResult.cloud) {
-        message = '저장 완료! 클라우드에도 자동 동기화되었습니다. 🌐';
+        message = '저장 완료 🌐';
     } else if (syncResult.local) {
-        message = '로컬에 저장되었습니다. 클라우드 동기화는 자동으로 진행됩니다. ⏳';
+        message = '저장됨 ⏳';
     }
     
-    alert(message);
+    showToastNearButton(message, 'success');
     
     // 🎯 ULTRATHINK: 저장 후 실시간 ParcelManager 동기화
     console.log('🔄 저장 완료 - ParcelManager 실시간 갱신 시작...');
@@ -1096,9 +1163,9 @@ function clearSelectedParcelsColors() {
     if (clearedCount > 0) {
         // 폼 초기화
         document.getElementById('parcelForm').reset();
-        alert(`${clearedCount}개의 선택 필지가 초기화되었습니다.`);
+        showToast(`${clearedCount}개 필지 초기화`, 'success');
     } else {
-        alert('초기화할 선택 필지가 없습니다.');
+        showToast('초기화할 필지 없음', 'info');
     }
 }
 
@@ -1131,7 +1198,7 @@ function clearAllParcelsColors() {
     document.getElementById('parcelForm').reset();
     
     console.log(`전체 초기화: ${clearedCount}개 필지 색상 제거`);
-    alert('모든 필지가 초기화되었습니다.');
+    showToast('모든 필지 초기화', 'success');
 }
 
 // 이벤트 리스너 초기화

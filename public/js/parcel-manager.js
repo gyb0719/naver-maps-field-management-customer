@@ -13,8 +13,8 @@ class ParcelManager {
         
         // 가상 스크롤 관련
         this.virtualScroller = null;
-        this.useVirtualScroll = true; // 가상 스크롤 사용 여부
-        this.VIRTUAL_SCROLL_THRESHOLD = 100; // 100개 이상일 때 가상 스크롤 사용
+        this.useVirtualScroll = false; // 🎯 ULTRATHINK: 가상 스크롤 임시 비활성화로 버그 해결
+        this.VIRTUAL_SCROLL_THRESHOLD = 10000; // 매우 높은 값으로 설정하여 가상 스크롤 비활성화
         
         this.init();
     }
