@@ -13,8 +13,8 @@ class ParcelManager {
         this.init();
     }
     
-    init() {
-        this.loadParcels();
+    async init() {
+        await this.loadParcels();
         this.setupEventListeners();
         
         // DOM이 준비되었을 때 렌더링 및 통계 업데이트
@@ -35,11 +35,25 @@ class ParcelManager {
         this.hideSearchLabels();
     }
     
-    loadParcels() {
-        // CONFIG.STORAGE_KEY를 사용하여 parcel.js와 같은 데이터 접근
-        const STORAGE_KEY = window.CONFIG && window.CONFIG.STORAGE_KEY ? window.CONFIG.STORAGE_KEY : 'parcelData';
-        const saved = localStorage.getItem(STORAGE_KEY);
-        const rawParcels = saved ? JSON.parse(saved) : [];
+    async loadParcels() {
+        // DataManager를 통한 하이브리드 로딩 (localStorage + Supabase)
+        let rawParcels = [];
+        
+        try {
+            if (window.dataManager) {
+                rawParcels = await window.dataManager.load();
+                console.log(`DataManager를 통해 ${rawParcels.length}개 필지 로드됨`);
+            } else {
+                // DataManager가 없으면 기존 방식 사용
+                const STORAGE_KEY = window.CONFIG && window.CONFIG.STORAGE_KEY ? window.CONFIG.STORAGE_KEY : 'parcelData';
+                const saved = localStorage.getItem(STORAGE_KEY);
+                rawParcels = saved ? JSON.parse(saved) : [];
+                console.log('레거시 모드로 데이터 로드됨');
+            }
+        } catch (error) {
+            console.error('데이터 로드 실패, 기본값 사용:', error);
+            rawParcels = [];
+        }
         
         // 기존 데이터 형식 변환 (id와 createdAt 추가)
         this.parcels = rawParcels.map((parcel, index) => {
@@ -98,10 +112,29 @@ class ParcelManager {
         }
     }
     
-    saveParcels() {
-        // CONFIG.STORAGE_KEY를 사용하여 parcel.js와 같은 데이터 저장
-        const STORAGE_KEY = window.CONFIG && window.CONFIG.STORAGE_KEY ? window.CONFIG.STORAGE_KEY : 'parcelData';
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.parcels));
+    async saveParcels() {
+        try {
+            if (window.dataManager) {
+                // DataManager를 통한 하이브리드 저장 (localStorage + Supabase)
+                const result = await window.dataManager.save(this.parcels);
+                console.log('DataManager 저장 결과:', result);
+                
+                if (!result.local) {
+                    console.error('로컬 저장 실패');
+                }
+                
+                return result;
+            } else {
+                // DataManager가 없으면 기존 방식 사용
+                const STORAGE_KEY = window.CONFIG && window.CONFIG.STORAGE_KEY ? window.CONFIG.STORAGE_KEY : 'parcelData';
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.parcels));
+                console.log('레거시 모드로 데이터 저장됨');
+                return { local: true, cloud: false };
+            }
+        } catch (error) {
+            console.error('데이터 저장 실패:', error);
+            return { local: false, cloud: false, errors: [error.message] };
+        }
     }
     
     addParcel(parcel) {

@@ -65,7 +65,10 @@
       "Read(/C:\\c\\Users\\gyb07\\projects/**)",
       "Read(/C:\\Users\\gyb07\\projects\\mega_copy\\app\\components/**)",
       "Read(/C:\\Users\\gyb07\\projects\\mega_copy\\app\\lib/**)",
-      "Read(/C:\\Users\\gyb07\\projects\\mega_copy\\app\\product/**)"
+      "Read(/C:\\Users\\gyb07\\projects\\mega_copy\\app\\product/**)",
+      "Bash(set PORT=4000)",
+      "Bash(node server.js)",
+      "Bash(del publicmigration-simple.html publicmigration-ui.html)"
     ],
     "deny": [],
     "ask": []

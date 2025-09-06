@@ -9,10 +9,46 @@ const GoogleAuth = {
     ],
     SCOPES: [
         'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/calendar.readonly',
+        'https://www.googleapis.com/auth/drive.file',
         'https://www.googleapis.com/auth/userinfo.profile',
         'https://www.googleapis.com/auth/userinfo.email'
     ].join(' '),
+
+    // 초기화 상태
+    initialized: false,
+
+    // Google API 초기화
+    async initializeAuth() {
+        if (this.initialized) return;
+        
+        try {
+            // Google API가 로드될 때까지 대기
+            await new Promise((resolve, reject) => {
+                if (window.google) {
+                    resolve();
+                    return;
+                }
+
+                let attempts = 0;
+                const checkGoogle = setInterval(() => {
+                    attempts++;
+                    if (window.google && window.google.accounts) {
+                        clearInterval(checkGoogle);
+                        resolve();
+                    } else if (attempts > 50) { // 5초 대기
+                        clearInterval(checkGoogle);
+                        reject(new Error('Google API 로드 실패'));
+                    }
+                }, 100);
+            });
+
+            this.initialized = true;
+            console.log('Google Auth 초기화 완료');
+        } catch (error) {
+            console.error('Google Auth 초기화 실패:', error);
+            throw error;
+        }
+    },
     
     // 토큰 만료 시간 확인
     isTokenExpired() {
@@ -23,12 +59,8 @@ const GoogleAuth = {
     
     // 로그인 상태 확인
     isAuthenticated() {
-        // 개발 환경 및 테스트 환경에서는 인증 건너뛰기
-        if (window.location.hostname === 'localhost' || 
-            window.location.hostname.includes('vercel.app')) {
-            console.log('인증 상태: 테스트 모드 (우회)');
-            return true;
-        }
+        // 실제 토큰 검증 (테스트 모드 제거)
+        console.log('인증 상태 확인 중...');
         
         // localStorage로 변경하여 브라우저 재시작해도 유지
         const idToken = localStorage.getItem('googleToken');
@@ -130,10 +162,19 @@ const GoogleAuth = {
         
         try {
             const response = await fetch(`https://sheets.googleapis.com/v4${endpoint}`, options);
+            const responseText = await response.text();
+            
             if (!response.ok) {
-                throw new Error(`API 호출 실패: ${response.status}`);
+                console.error('API 호출 실패 상세:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    response: responseText,
+                    endpoint: endpoint
+                });
+                throw new Error(`API 호출 실패: ${response.status} - ${responseText}`);
             }
-            return await response.json();
+            
+            return JSON.parse(responseText);
         } catch (error) {
             console.error('Sheets API 호출 오류:', error);
             return null;
@@ -233,6 +274,154 @@ const GoogleAuth = {
         }
     },
     
+    // 대량 필지 데이터 백업 (60k 개)
+    async backupParcelsToSheets(parcels, onProgress = null) {
+        const BATCH_SIZE = 1000; // Google Sheets API 제한 대응
+        const SPREADSHEET_NAME = '네이버지도_필지백업_' + new Date().toISOString().slice(0,10);
+        
+        // 새 백업 시트 생성
+        const spreadsheetId = await this.createBackupSpreadsheet(SPREADSHEET_NAME, 'parcel');
+        if (!spreadsheetId) throw new Error('백업 시트 생성 실패');
+        
+        let processedCount = 0;
+        const totalBatches = Math.ceil(parcels.length / BATCH_SIZE);
+        
+        for (let i = 0; i < totalBatches; i++) {
+            const batch = parcels.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+            const values = batch.map(parcel => {
+                console.log('Processing parcel:', parcel); // 디버깅
+                return [
+                    parcel.pnu || '',
+                    parcel.address || '',
+                    parcel.jibun || '', 
+                    parcel.area || 0,
+                    parcel.ownerName || '', // 테스트 데이터는 ownerName 사용
+                    parcel.color || '',
+                    parcel.lat || 0,
+                    parcel.lng || 0,
+                    parcel.created ? new Date(parcel.created).toLocaleString('ko-KR') : new Date().toLocaleString('ko-KR'),
+                    JSON.stringify(parcel.coordinates || [])
+                ];
+            });
+            
+            await this.batchUpdateSheet(spreadsheetId, `필지데이터!A${processedCount + 2}`, values);
+            processedCount += batch.length;
+            
+            if (onProgress) {
+                onProgress(Math.round((processedCount / parcels.length) * 100), `${processedCount}/${parcels.length} 처리 완료`);
+            }
+            
+            // API 제한 방지 딜레이
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        return { spreadsheetId, processedCount };
+    },
+
+    // 대량 메모 데이터 백업 (30k 개)
+    async backupMemosToSheets(memos, onProgress = null) {
+        const BATCH_SIZE = 1000;
+        const SPREADSHEET_NAME = '네이버지도_메모백업_' + new Date().toISOString().slice(0,10);
+        
+        const spreadsheetId = await this.createBackupSpreadsheet(SPREADSHEET_NAME, 'memo');
+        if (!spreadsheetId) throw new Error('메모 백업 시트 생성 실패');
+        
+        let processedCount = 0;
+        const totalBatches = Math.ceil(memos.length / BATCH_SIZE);
+        
+        for (let i = 0; i < totalBatches; i++) {
+            const batch = memos.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+            const values = batch.map(memo => [
+                memo.pnu || '',
+                memo.content || '',
+                new Date(memo.created || Date.now()).toLocaleString('ko-KR'),
+                memo.parcel_id || ''
+            ]);
+            
+            await this.batchUpdateSheet(spreadsheetId, `메모데이터!A${processedCount + 2}`, values);
+            processedCount += batch.length;
+            
+            if (onProgress) {
+                onProgress(Math.round((processedCount / memos.length) * 100), `${processedCount}/${memos.length} 처리 완료`);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        return { spreadsheetId, processedCount };
+    },
+
+    // 백업용 스프레드시트 생성
+    async createBackupSpreadsheet(title, type) {
+        const sheets = type === 'parcel' ? [
+            {
+                properties: { title: '필지데이터' },
+                data: [{
+                    startRow: 0,
+                    startColumn: 0,
+                    rowData: [{
+                        values: [
+                            { userEnteredValue: { stringValue: 'PNU' }},
+                            { userEnteredValue: { stringValue: '주소' }},
+                            { userEnteredValue: { stringValue: '지번' }},
+                            { userEnteredValue: { stringValue: '면적' }},
+                            { userEnteredValue: { stringValue: '소유자' }},
+                            { userEnteredValue: { stringValue: '색상' }},
+                            { userEnteredValue: { stringValue: '위도' }},
+                            { userEnteredValue: { stringValue: '경도' }},
+                            { userEnteredValue: { stringValue: '생성일시' }},
+                            { userEnteredValue: { stringValue: '좌표데이터' }}
+                        ]
+                    }]
+                }]
+            }
+        ] : [
+            {
+                properties: { title: '메모데이터' },
+                data: [{
+                    startRow: 0,
+                    startColumn: 0,
+                    rowData: [{
+                        values: [
+                            { userEnteredValue: { stringValue: 'PNU' }},
+                            { userEnteredValue: { stringValue: '메모내용' }},
+                            { userEnteredValue: { stringValue: '생성일시' }},
+                            { userEnteredValue: { stringValue: '필지ID' }}
+                        ]
+                    }]
+                }]
+            }
+        ];
+
+        const createData = {
+            properties: { title },
+            sheets
+        };
+        
+        const result = await this.callSheetsAPI('POST', '/spreadsheets', createData);
+        return result ? result.spreadsheetId : null;
+    },
+
+    // 배치 업데이트
+    async batchUpdateSheet(spreadsheetId, range, values) {
+        const body = {
+            values: values,
+            majorDimension: 'ROWS'
+        };
+        
+        console.log(`API 호출: PUT /spreadsheets/${spreadsheetId}/values/${range}`);
+        console.log('전송 데이터:', { valuesCount: values.length, firstRow: values[0] });
+        
+        const result = await this.callSheetsAPI(
+            'PUT',
+            `/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=RAW`,
+            body
+        );
+        
+        console.log('API 응답:', result);
+        return result;
+    },
+
     // 스프레드시트에 데이터 추가
     async appendToSheet(spreadsheetId, data) {
         const range = '필지정보!A:E';
