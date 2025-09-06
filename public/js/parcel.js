@@ -1,32 +1,27 @@
 // 필지 관련 기능
 
-// 실제 VWorld API로 필지 정보 조회
+// 실제 VWorld API로 필지 정보 조회 (JSONP 방식)
 async function getParcelInfo(lat, lng) {
     console.log(`🏢 실제 필지 정보 조회 시작: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
     
-    // 다중 API 키 풀 (실제 작동 키들)
-    const apiKeys = [
-        'BBAC532E-A56D-34CF-B520-CE68E8D6D52A',
-        'E5B1657B-9B6F-3A4B-91EF-98512BE931A1',
-        '6B854F88-4A5D-303C-B7C8-40858117A95E',
-        'CEB6F0C2-8D2C-3F1A-B9B0-3F7E8D4C6A50'
-    ];
+    // Config에서 API 키 가져오기 (기존 작동하던 방식으로 복원)
+    const apiKeys = CONFIG.VWORLD_API_KEYS;
     
-    // CORS 우회를 위해 JSONP를 우선적으로 시도
+    // JSONP 방식으로 각 API 키 시도
     for (let i = 0; i < apiKeys.length; i++) {
         const apiKey = apiKeys[i];
-        console.log(`🔑 JSONP 우선 시도 - API 키 ${i+1}/${apiKeys.length}: ${apiKey.substring(0, 8)}...`);
+        console.log(`🔑 JSONP 시도 - API 키 ${i+1}/${apiKeys.length}: ${apiKey.substring(0, 8)}...`);
         
         const result = await getParcelInfoViaJSONP(lat, lng, apiKey);
         if (result) {
             console.log('🎊 JSONP로 실제 필지 데이터 획득 성공!');
-            return; // 성공 시 함수 종료
+            return result;
         }
         
         console.log(`⚠️ JSONP API 키 ${i+1} 실패, 다음 키로 시도...`);
     }
     
-    // JSONP가 모든 키로 실패한 경우 메시지 출력
+    // 모든 키로 실패한 경우
     console.log('⚠️ 모든 API 키로 필지 정보를 가져오지 못했습니다.');
     console.log('💡 VWorld API는 CORS 정책으로 인해 JSONP만 지원합니다.');
     alert('해당 위치의 필지 정보를 찾을 수 없습니다.');
@@ -72,8 +67,8 @@ async function getParcelInfoViaJSONP(lat, lng, apiKey) {
             }
         };
         
-        // JSONP 요청 URL 생성
-        const url = `http://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${apiKey}&geometry=true&geomFilter=POINT(${lng} ${lat})&size=10&format=json&crs=EPSG:4326&callback=${callbackName}`;
+        // JSONP 요청 URL 생성 (HTTPS 사용으로 Mixed Content 해결)
+        const url = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${apiKey}&geometry=true&geomFilter=POINT(${lng} ${lat})&size=10&format=json&crs=EPSG:4326&callback=${callbackName}`;
         
         script.src = url;
         script.onerror = () => {
@@ -117,13 +112,8 @@ async function loadParcelsInBounds(bounds) {
     const bbox = `${sw.lng()},${sw.lat()},${ne.lng()},${ne.lat()}`;
     console.log('🗺️ 검색 영역 (BBOX):', bbox);
     
-    // API 키 풀
-    const apiKeys = [
-        'BBAC532E-A56D-34CF-B520-CE68E8D6D52A',
-        'E5B1657B-9B6F-3A4B-91EF-98512BE931A1',
-        '6B854F88-4A5D-303C-B7C8-40858117A95E',
-        'CEB6F0C2-8D2C-3F1A-B9B0-3F7E8D4C6A50'
-    ];
+    // Config에서 API 키 가져오기
+    const apiKeys = CONFIG.VWORLD_API_KEYS;
     
     // CORS 우회를 위해 JSONP를 우선적으로 시도
     for (let keyIndex = 0; keyIndex < apiKeys.length; keyIndex++) {
@@ -203,7 +193,7 @@ async function loadParcelsInBoundsViaJSONP(bounds, apiKey) {
         };
         
         // JSONP 요청 URL 생성
-        const url = `http://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${apiKey}&geometry=true&geomFilter=BOX(${bbox})&size=100&format=json&crs=EPSG:4326&callback=${callbackName}`;
+        const url = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${apiKey}&geometry=true&geomFilter=BOX(${bbox})&size=100&format=json&crs=EPSG:4326&callback=${callbackName}`;
         
         script.src = url;
         script.onerror = () => {
