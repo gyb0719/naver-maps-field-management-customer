@@ -66,7 +66,14 @@
             <aside class="sidebar">
             <!-- 색상 선택 패널 -->
             <div class="color-panel">
-                <h3>필지 색상</h3>
+                <div class="panel-header">
+                    <h3>필지 색상</h3>
+                    <!-- 🎯 ULTRATHINK: 필지 색칠 on/off 버튼 -->
+                    <button id="paintModeToggle" class="paint-toggle-btn active" title="필지 색칠 모드 토글">
+                        <span class="toggle-icon">🎨</span>
+                        <span class="toggle-text">색칠 ON</span>
+                    </button>
+                </div>
                 <div class="color-palette">
                     <div class="color-item" data-color="#FF0000" style="background: #FF0000"></div>
                     <div class="color-item" data-color="#FFA500" style="background: #FFA500"></div>
@@ -136,6 +143,34 @@
             <div class="map-container">
                 <div id="map"></div>
                 <div id="pano" style="display:none;"></div>
+                
+                <!-- 🎯 ULTRATHINK: 거리뷰에서 지도로 돌아가기 버튼 -->
+                <div id="streetViewControls" class="street-controls" style="display:none;">
+                    <button id="backToMapBtn" class="back-to-map-btn">
+                        <span>🗺️</span>
+                        <span class="back-text">지도로 돌아가기</span>
+                    </button>
+                </div>
+                
+                <!-- 🎯 ULTRATHINK: 거리뷰 커스텀 미니맵 -->
+                <div id="panoramaMinimap" class="panorama-minimap" style="display:none;">
+                    <div id="minimapContainer"></div>
+                    <div class="minimap-header">
+                        <span>🗺️</span>
+                        <span>미니맵</span>
+                        <button id="minimapToggle" class="minimap-toggle">−</button>
+                    </div>
+                </div>
+                
+                <!-- 🎯 ULTRATHINK: 거리뷰 화살표 네비게이션 -->
+                <div id="panoramaNavigation" class="panorama-nav" style="display:none;">
+                    <button id="navUpBtn" class="nav-btn nav-up">▲</button>
+                    <div class="nav-horizontal">
+                        <button id="navLeftBtn" class="nav-btn nav-left">◀</button>
+                        <button id="navRightBtn" class="nav-btn nav-right">▶</button>
+                    </div>
+                    <button id="navDownBtn" class="nav-btn nav-down">▼</button>
+                </div>
             </div>
         </div>
     </div>
@@ -171,25 +206,6 @@
         </div>
     </div>
     
-    <!-- 새로운 사이드 패널 (저장된 필지 관리) -->
-    <div id="advancedParcelPanel" class="advanced-panel">
-        <div class="ap-toggle" onclick="parcelManager.togglePanel()" title="필지 목록">
-            <span class="ap-toggle-icon">≡</span>
-        </div>
-        <div class="ap-content">
-            <div class="ap-header">
-                <h3>저장 필지 목록</h3>
-                <div class="cloud-status" id="cloudStatus">
-                    <span class="sync-indicator" id="syncIndicator" title="클라우드 동기화 상태">☁️</span>
-                    <span class="sync-text" id="syncText">오프라인</span>
-                </div>
-                <button class="ap-close" onclick="parcelManager.togglePanel()">✕</button>
-            </div>
-            <div id="parcelManagerContent" class="ap-body">
-                <!-- 여기에 ParcelManager가 렌더링됨 -->
-            </div>
-        </div>
-    </div>
 
     <!-- JavaScript -->
     <script>
@@ -209,6 +225,9 @@
     <script src="/js/viewport-renderer.js"></script>
     <script src="/js/indexeddb-cache.js"></script>
     <script src="/js/data-manager-simple.js"></script>
+    <script src="/js/data-manager-realtime.js"></script>
+    <script src="/js/user-manager.js"></script>
+    <script src="/js/realtime-ui.js"></script>
     <script src="/js/sync-status.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/utils.js"></script>

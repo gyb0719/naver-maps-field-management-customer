@@ -21,9 +21,9 @@ class DataManager {
         this.pendingSyncData = null;
         this.SYNC_DEBOUNCE_MS = 2000; // 2초 디바운싱
         
-        // Google Sheets 백업 관리
+        // Google Sheets 백업 관리 - 🎯 ULTRATHINK 강화
         this.lastGoogleBackup = null;
-        this.googleBackupInterval = 5 * 60 * 1000; // 5분마다
+        this.googleBackupInterval = 2 * 60 * 1000; // 2분마다 백업 (더 빈번하게)
         
         // 충돌 방지 및 성능 최적화
         this.dataVersion = null; // 데이터 버전 추적
@@ -32,7 +32,7 @@ class DataManager {
         this.connectionPool = new Map(); // 연결 재사용
         this.memoryCache = new Map(); // 메모리 캐시
         this.CACHE_TTL = 30000; // 30초 캐시 만료
-        this.MAX_RETRIES = 3; // 최대 재시도 횟수
+        this.MAX_RETRIES = 5; // 🎯 ULTRATHINK: 재시도 횟수 증가 (3→5)
         this.syncLockTimeout = 30000; // 30초 동기화 잠금 타임아웃
         
         // 성능 모니터링
@@ -42,16 +42,26 @@ class DataManager {
             batchOptimization: { successes: 0, failures: 0 }
         };
         
-        // 에러 핸들링 및 재시도 로직
-        this.retryDelays = [1000, 2000, 4000, 8000, 16000]; // 지수 백오프 지연 시간
+        // 에러 핸들링 및 재시도 로직 - 🎯 ULTRATHINK 강화
+        this.retryDelays = [1000, 2000, 4000, 8000, 12000, 16000]; // 더 많은 재시도 단계
         this.circuitBreaker = {
             isOpen: false,
             failures: 0,
             lastFailureTime: null,
-            threshold: 5, // 5번 실패시 회로 차단
-            timeout: 60000 // 1분 후 재시도
+            threshold: 8, // 8번 실패시 회로 차단 (더 관대하게)
+            timeout: 30000 // 30초 후 재시도 (더 빠른 복구)
         };
         this.activeRetries = new Map(); // 진행 중인 재시도 추적
+        
+        // 🎯 ULTRATHINK: 2중 백업 확실성 보장 시스템
+        this.backupGuaranteeSystem = {
+            lastSuccessfulSupabaseBackup: null,
+            lastSuccessfulGoogleBackup: null,
+            backupFailureCount: 0,
+            emergencyBackupMode: false,
+            criticalDataLossThreshold: 10, // 10번 실패시 경고
+            userNotificationSent: false
+        };
         
         // 초기화
         this.init();
@@ -68,6 +78,10 @@ class DataManager {
             await this.testSupabaseConnection();
             this.updateSyncStatus('synced');
             console.log('DataManager 초기화 완료 - Supabase 연결 성공');
+            
+            // 🎯 ULTRATHINK: 백업 상태 모니터링 시작
+            this.startBackupMonitoring();
+            
         } catch (error) {
             console.warn('Supabase 연결 실패, localStorage 전용 모드:', error.message);
             console.log('🔧 Supabase 재연결 시도 중...');
@@ -78,6 +92,7 @@ class DataManager {
                     await this.testSupabaseConnection();
                     this.updateSyncStatus('synced');
                     console.log('✅ Supabase 재연결 성공!');
+                    this.startBackupMonitoring(); // 재연결 성공시에도 모니터링 시작
                 } catch (retryError) {
                     console.log('❌ Supabase 재연결 실패, localStorage 전용 모드 유지');
                     this.updateSyncStatus('offline');
@@ -85,6 +100,117 @@ class DataManager {
             }, 3000);
             
             this.updateSyncStatus('syncing');
+        }
+    }
+
+    // 🎯 ULTRATHINK: 백업 상태 모니터링 시스템
+    startBackupMonitoring() {
+        console.log('🔍 2중 백업 모니터링 시스템 시작');
+        
+        // 1분마다 백업 상태 확인
+        setInterval(() => {
+            this.checkBackupHealth();
+        }, 60000);
+        
+        // 10분마다 강제 백업 시도 (확실성 보장)
+        setInterval(() => {
+            this.forceEmergencyBackup();
+        }, 10 * 60 * 1000);
+    }
+
+    // 백업 상태 건강 체크
+    async checkBackupHealth() {
+        const now = Date.now();
+        const supabaseStale = !this.backupGuaranteeSystem.lastSuccessfulSupabaseBackup || 
+                              (now - this.backupGuaranteeSystem.lastSuccessfulSupabaseBackup) > 300000; // 5분 이상
+        const googleStale = !this.backupGuaranteeSystem.lastSuccessfulGoogleBackup || 
+                           (now - this.backupGuaranteeSystem.lastSuccessfulGoogleBackup) > 600000; // 10분 이상
+        
+        if (supabaseStale || googleStale) {
+            console.warn('⚠️ 백업 상태 경고:', { supabaseStale, googleStale });
+            this.backupGuaranteeSystem.backupFailureCount++;
+            
+            // 긴급 백업 모드 활성화
+            if (this.backupGuaranteeSystem.backupFailureCount >= this.backupGuaranteeSystem.criticalDataLossThreshold) {
+                this.activateEmergencyBackupMode();
+            }
+        }
+    }
+
+    // 긴급 백업 모드 활성화
+    async activateEmergencyBackupMode() {
+        if (this.backupGuaranteeSystem.emergencyBackupMode) return;
+        
+        console.error('🚨 긴급 백업 모드 활성화!');
+        this.backupGuaranteeSystem.emergencyBackupMode = true;
+        
+        // 사용자에게 알림
+        if (!this.backupGuaranteeSystem.userNotificationSent) {
+            this.notifyUser('백업 시스템이 불안정합니다. 데이터 확인 중...', 'warning');
+            this.backupGuaranteeSystem.userNotificationSent = true;
+        }
+        
+        // 강제 백업 시도
+        await this.forceEmergencyBackup();
+    }
+
+    // 강제 긴급 백업
+    async forceEmergencyBackup() {
+        try {
+            console.log('🆘 긴급 백업 시도 중...');
+            
+            // localStorage에서 데이터 로드
+            const parcels = this.loadParcels();
+            if (parcels.length === 0) {
+                console.log('백업할 데이터가 없음');
+                return;
+            }
+            
+            // Supabase 백업 강제 시도
+            try {
+                const supabaseSuccess = await this.saveCloud(parcels, { forceSync: true });
+                if (supabaseSuccess) {
+                    this.backupGuaranteeSystem.lastSuccessfulSupabaseBackup = Date.now();
+                    console.log('✅ 긴급 Supabase 백업 성공');
+                }
+            } catch (error) {
+                console.error('❌ 긴급 Supabase 백업 실패:', error);
+            }
+            
+            // Google Sheets 백업 강제 시도
+            try {
+                await this.executeGoogleBackupWithRetry(parcels);
+                this.backupGuaranteeSystem.lastSuccessfulGoogleBackup = Date.now();
+                console.log('✅ 긴급 Google Sheets 백업 성공');
+            } catch (error) {
+                console.error('❌ 긴급 Google Sheets 백업 실패:', error);
+            }
+            
+            // 성공시 긴급 모드 해제
+            if (this.backupGuaranteeSystem.lastSuccessfulSupabaseBackup && 
+                this.backupGuaranteeSystem.lastSuccessfulGoogleBackup) {
+                this.backupGuaranteeSystem.emergencyBackupMode = false;
+                this.backupGuaranteeSystem.backupFailureCount = 0;
+                this.notifyUser('백업 시스템 정상 복구됨 ✅', 'success');
+                console.log('🎉 긴급 백업 모드 해제 - 시스템 정상');
+            }
+            
+        } catch (error) {
+            console.error('💥 긴급 백업 전체 실패:', error);
+            this.notifyUser('백업 시스템 심각한 오류!', 'error');
+        }
+    }
+
+    // 사용자 알림 함수
+    notifyUser(message, type = 'info') {
+        console.log(`🔔 사용자 알림: ${message}`);
+        
+        // showToast 함수 사용 (이미 구현되어 있음)
+        if (typeof showToast === 'function') {
+            showToast(message, type);
+        } else {
+            // 폴백: 콘솔 경고
+            console.warn('showToast 함수가 없음:', message);
         }
     }
 
@@ -425,7 +551,7 @@ class DataManager {
         }
     }
 
-    // Supabase에 실제 데이터 저장
+    // Supabase에 실제 데이터 저장 - 🎯 ULTRATHINK 백업 추적 강화
     async saveCloud(parcels, options = {}) {
         if (this.syncStatus === 'offline') {
             console.log('오프라인 모드 - 클라우드 저장 건너뜀');
@@ -434,6 +560,8 @@ class DataManager {
 
         if (parcels.length === 0) {
             console.log('저장할 데이터가 없음');
+            // 빈 데이터도 성공으로 간주하고 타임스탬프 기록
+            this.backupGuaranteeSystem.lastSuccessfulSupabaseBackup = Date.now();
             return true;
         }
 
@@ -542,6 +670,9 @@ class DataManager {
             if (successRate >= 0.8) { // 80% 이상 성공
                 this.updateSyncStatus('synced');
                 console.log(`✅ 클라우드 저장 성공: ${totalProcessed}/${validParcels.length}개`);
+                
+                // 🎯 ULTRATHINK: 백업 성공 타임스탬프 기록
+                this.backupGuaranteeSystem.lastSuccessfulSupabaseBackup = Date.now();
                 
                 if (totalErrors.length > 0) {
                     console.warn('일부 오류:', totalErrors);
@@ -946,6 +1077,25 @@ class DataManager {
                 }
             }
             
+            // 🎯 ULTRATHINK: 강제 Google Sheets 백업
+            if (options.forceGoogleBackup === true) {
+                try {
+                    console.log('🚀 강제 Google Sheets 백업 시작');
+                    const googleBackupResult = await this.executeGoogleBackupWithRetry(parcels);
+                    if (googleBackupResult.success) {
+                        console.log(`✅ 강제 Google Sheets 백업 완료: ${googleBackupResult.count}개 필지`);
+                        results.googleBackup = true;
+                    } else {
+                        results.errors.push(`Google Sheets 백업 실패: ${googleBackupResult.error}`);
+                        results.googleBackup = false;
+                    }
+                } catch (error) {
+                    results.errors.push(`Google Sheets 백업 실패: ${error.message}`);
+                    results.googleBackup = false;
+                    console.error('❌ 강제 Google Sheets 백업 오류:', error);
+                }
+            }
+            
             // 6. 성능 메트릭 기록
             const syncTime = Date.now() - startTime;
             this.performanceMetrics.syncTimes.push(syncTime);
@@ -1100,9 +1250,9 @@ class DataManager {
         console.log(`🔧 Google Sheets 백업 간격 조정: ${Math.round(this.googleBackupInterval / 60000)}분`);
     }
     
-    // Google Sheets 백업 재시도 로직
+    // Google Sheets 백업 재시도 로직 - 🎯 ULTRATHINK 강화
     async executeGoogleBackupWithRetry(parcels, retryCount = 0) {
-        const MAX_BACKUP_RETRIES = 2;
+        const MAX_BACKUP_RETRIES = 4; // 재시도 횟수 증가 (2→4)
         
         try {
             // Google Sheets API 사용 가능성 체크
@@ -1122,6 +1272,10 @@ class DataManager {
             
             if (result && result.success) {
                 this.adjustBackupInterval(true);
+                // 🎯 ULTRATHINK: Google Sheets 백업 성공 타임스탬프 기록
+                this.backupGuaranteeSystem.lastSuccessfulGoogleBackup = Date.now();
+                console.log(`📊 Google Sheets 백업 성공 시각 기록: ${new Date().toISOString()}`);
+                
                 return {
                     success: true,
                     count: parcels.length,
@@ -1139,8 +1293,8 @@ class DataManager {
             const isRetryable = this.isGoogleBackupRetryable(error);
             
             if (isRetryable && retryCount < MAX_BACKUP_RETRIES) {
-                const delay = (retryCount + 1) * 2000; // 2초, 4초, 6초
-                console.log(`⏰ ${delay}ms 후 Google Sheets 백업 재시도`);
+                const delay = (retryCount + 1) * 1500; // 🎯 ULTRATHINK: 더 빠른 재시도 (1.5초, 3초, 4.5초, 6초)
+                console.log(`⏰ ${delay}ms 후 Google Sheets 백업 재시도 (${retryCount + 1}/${MAX_BACKUP_RETRIES})`);
                 
                 await new Promise(resolve => setTimeout(resolve, delay));
                 return this.executeGoogleBackupWithRetry(parcels, retryCount + 1);

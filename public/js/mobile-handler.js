@@ -119,14 +119,9 @@ class MobileHandler {
     }
     
     openParcelList() {
-        if (window.parcelManager) {
-            const panel = document.getElementById('advancedParcelPanel');
-            if (panel) {
-                panel.classList.add('open');
-                this.activePanel = panel;
-                window.parcelManager.render();
-            }
-        }
+        // 🎯 ULTRATHINK: ParcelManager UI 제거됨 - 클라우드 백업 전용
+        // 우측 패널 UI 완전 비활성화 - Supabase + Google Sheets만 사용
+        console.log('📱 필지 목록 UI 비활성화됨 - 클라우드 백업 시스템 사용 중');
         this.closeOtherPanels(document.getElementById('advancedParcelPanel'));
     }
     

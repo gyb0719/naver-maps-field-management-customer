@@ -136,12 +136,8 @@ function highlightParcel(parcelData) {
         // localStorage에 저장
         saveSearchResultsToStorage();
         
-        // ULTRATHINK: 실시간 ParcelManager 동기화
-        if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
-            window.parcelManager.loadParcels();
-            window.parcelManager.updateStatisticsOnly();
-            window.parcelManager.render();
-        }
+        // 🎯 ULTRATHINK: ParcelManager UI 제거됨 - Supabase + Google Sheets 2중 백업만 사용
+        // UI 동기화 불필요 - 데이터는 자동으로 클라우드에 백업됨
         
         // 검색 결과 저장 이벤트 발생
         window.dispatchEvent(new CustomEvent('parcelDataSaved', {
@@ -276,12 +272,8 @@ function clearSearchResults() {
         }
         console.log('🧹 검색 결과 지도에서 제거 완료');
         
-        // ULTRATHINK: 실시간 ParcelManager 동기화
-        if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
-            window.parcelManager.loadParcels();
-            window.parcelManager.updateStatisticsOnly();
-            window.parcelManager.render();
-        }
+        // 🎯 ULTRATHINK: ParcelManager UI 제거됨 - Supabase + Google Sheets 2중 백업만 사용
+        // UI 동기화 불필요 - 데이터는 자동으로 클라우드에 백업됨
         
         // 검색 결과 정리 이벤트 발생
         window.dispatchEvent(new CustomEvent('parcelDataSaved', {
@@ -298,12 +290,8 @@ function removeSearchResultsFromStorage() {
         localStorage.removeItem(SEARCH_STORAGE_KEY);
         console.log('🗑️ localStorage에서 검색 결과 삭제 완료');
         
-        // ULTRATHINK: 실시간 ParcelManager 동기화
-        if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
-            window.parcelManager.loadParcels();
-            window.parcelManager.updateStatisticsOnly();
-            window.parcelManager.render();
-        }
+        // 🎯 ULTRATHINK: ParcelManager UI 제거됨 - Supabase + Google Sheets 2중 백업만 사용
+        // UI 동기화 불필요 - 데이터는 자동으로 클라우드에 백업됨
         
         // localStorage 검색 결과 삭제 이벤트 발생
         window.dispatchEvent(new CustomEvent('parcelDataSaved', {
@@ -1046,11 +1034,7 @@ function clearAllSearchResults() {
     console.log('모든 검색 결과 제거 완료');
     
     // ULTRATHINK: 실시간 ParcelManager 동기화
-    if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
-        window.parcelManager.loadParcels();
-        window.parcelManager.updateStatisticsOnly();
-        window.parcelManager.render();
-    }
+    // 🎯 ULTRATHINK: ParcelManager UI 제거됨 - 클라우드 백업만 활성
     
     // 검색 결과 삭제 이벤트 발생
     window.dispatchEvent(new CustomEvent('parcelDataSaved', {

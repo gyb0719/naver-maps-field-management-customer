@@ -1,6 +1,9 @@
-// 고급 필지 관리 시스템 - 가상 스크롤 최적화
+// 🎯 ULTRATHINK: UI 제거됨 - 클라우드 백업 전용 모드
+// ParcelManager UI는 비활성화되고, 데이터는 Supabase + Google Sheets 2중 백업만 사용
 class ParcelManager {
     constructor() {
+        // UI 관련 기능 모두 비활성화
+        this.uiDisabled = true;
         this.parcels = [];
         this.filteredParcels = [];
         this.selectedParcels = new Set();
@@ -231,16 +234,145 @@ class ParcelManager {
     
     // 전체 데이터 초기화
     clearAllData() {
-        const confirmMsg = `경고: 전체 초기화\n\n모든 필지 정보와 색상이 영구적으로 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.\n\n정말로 전체 초기화를 진행하시겠습니까?`;
+        this.showResetConfirmationPopup();
+    }
+    
+    // 🎯 ULTRATHINK: 초기화 확인 팝업 (실시간 활동과 동일한 스타일)
+    showResetConfirmationPopup() {
+        const popup = document.createElement('div');
+        popup.id = 'resetConfirmationPopup';
+        popup.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                backdrop-filter: blur(5px);
+            " onclick="this.remove()">
+                <div style="
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    width: 400px;
+                    max-width: 90%;
+                    overflow: hidden;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    animation: slideIn 0.3s ease-out;
+                " onclick="event.stopPropagation()">
+                    <div style="
+                        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+                        color: white;
+                        padding: 16px 20px;
+                        font-weight: bold;
+                        font-size: 16px;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    ">
+                        ⚠️ 전체 초기화 확인
+                    </div>
+                    
+                    <div style="padding: 20px;">
+                        <div style="margin-bottom: 16px; line-height: 1.5; color: #333;">
+                            <strong style="color: #e74c3c;">경고:</strong> 모든 필지 정보와 색상이 영구적으로 삭제됩니다.<br>
+                            <span style="color: #666;">이 작업은 되돌릴 수 없습니다.</span>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; font-size: 14px; color: #666;">
+                                확인을 위해 "<strong>초기화</strong>"를 입력하세요:
+                            </label>
+                            <input 
+                                id="resetConfirmInput" 
+                                type="text" 
+                                placeholder="초기화"
+                                style="
+                                    width: 100%;
+                                    padding: 10px;
+                                    border: 2px solid #ddd;
+                                    border-radius: 6px;
+                                    font-size: 14px;
+                                    box-sizing: border-box;
+                                "
+                                onkeyup="if(event.key==='Enter' && this.value==='초기화') document.getElementById('confirmResetBtn').click()"
+                            />
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                            <button onclick="document.getElementById('resetConfirmationPopup').remove()" style="
+                                background: #95a5a6;
+                                color: white;
+                                border: none;
+                                padding: 10px 16px;
+                                border-radius: 6px;
+                                font-size: 14px;
+                                cursor: pointer;
+                                transition: background 0.2s;
+                            " onmouseover="this.style.background='#7f8c8d'" onmouseout="this.style.background='#95a5a6'">
+                                취소
+                            </button>
+                            <button id="confirmResetBtn" onclick="parcelManager.executeReset()" style="
+                                background: #e74c3c;
+                                color: white;
+                                border: none;
+                                padding: 10px 16px;
+                                border-radius: 6px;
+                                font-size: 14px;
+                                font-weight: bold;
+                                cursor: pointer;
+                                transition: background 0.2s;
+                            " onmouseover="this.style.background='#c0392b'" onmouseout="this.style.background='#e74c3c'">
+                                초기화 실행
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <style>
+                    @keyframes slideIn {
+                        from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+                        to { opacity: 1; transform: scale(1) translateY(0); }
+                    }
+                </style>
+            </div>
+        `;
         
-        if (!confirm(confirmMsg)) return;
+        document.body.appendChild(popup);
         
-        // 두 번 확인
-        const secondConfirm = prompt(`정말로 모든 데이터를 삭제하시려면 "초기화"를 입력하세요:`);
-        if (secondConfirm !== "초기화") {
-            alert('초기화가 취소되었습니다.');
+        // 입력 필드에 포커스
+        setTimeout(() => {
+            const input = document.getElementById('resetConfirmInput');
+            if (input) input.focus();
+        }, 100);
+    }
+    
+    // 🎯 ULTRATHINK: 초기화 실행
+    executeReset() {
+        const input = document.getElementById('resetConfirmInput');
+        if (!input || input.value !== '초기화') {
+            input.style.borderColor = '#e74c3c';
+            input.style.backgroundColor = '#ffeaa7';
+            setTimeout(() => {
+                input.style.borderColor = '#ddd';
+                input.style.backgroundColor = 'white';
+            }, 1000);
             return;
         }
+        
+        // 팝업 제거
+        document.getElementById('resetConfirmationPopup').remove();
+        
+        this.performReset();
+    }
+    
+    // 🎯 ULTRATHINK: 실제 초기화 수행
+    performReset() {
         
         // 모든 데이터 삭제
         this.parcels = [];
@@ -271,24 +403,44 @@ class ParcelManager {
             countEl.textContent = '0';
         }
         
-        alert('전체 초기화가 완료되었습니다.');
+        // 토스트 메시지로 알림
+        if (window.showToast) {
+            window.showToast('전체 초기화가 완료되었습니다! 🗑️', 'success');
+        } else {
+            alert('전체 초기화가 완료되었습니다.');
+        }
     }
     
     // 전체 필지를 구글 시트로 전송
     async exportAllToGoogleSheets() {
         if (this.parcels.length === 0) {
-            alert('전송할 필지 데이터가 없습니다.');
+            if (window.showToast) {
+                window.showToast('전송할 필지 데이터가 없습니다.', 'warning');
+            } else {
+                alert('전송할 필지 데이터가 없습니다.');
+            }
             return;
         }
         
-        // 데이터 형식 변환
-        const dataToExport = this.parcels.map(parcel => ({
-            parcelNumber: parcel.parcelNumber || '',
-            ownerName: parcel.ownerName || '',
-            ownerAddress: parcel.ownerAddress || '',
-            ownerContact: parcel.ownerContact || '',
-            memo: parcel.memo || ''
-        }));
+        // 지번만 있어도 전송 가능하도록 필터링
+        const dataToExport = this.parcels
+            .filter(parcel => parcel.parcelNumber && parcel.parcelNumber.trim()) // 지번이 있는 것만
+            .map(parcel => ({
+                parcelNumber: parcel.parcelNumber || '',
+                ownerName: parcel.ownerName || '',
+                ownerAddress: parcel.ownerAddress || '',
+                ownerContact: parcel.ownerContact || '',
+                memo: parcel.memo || ''
+            }));
+        
+        if (dataToExport.length === 0) {
+            if (window.showToast) {
+                window.showToast('지번이 입력된 필지가 없습니다.', 'warning');
+            } else {
+                alert('지번이 입력된 필지가 없습니다.');
+            }
+            return;
+        }
         
         // exportToGoogleSheets 함수 호출 (sheets.js의 함수에 데이터 전달)
         if (typeof exportToGoogleSheets === 'function') {
@@ -479,6 +631,12 @@ class ParcelManager {
     }
     
     togglePanel() {
+        // 🎯 ULTRATHINK: UI 제거됨 - 패널 토글 비활성화
+        if (this.uiDisabled) {
+            console.log('🚫 ParcelManager UI 비활성화 - 패널 토글 스킵');
+            return;
+        }
+        
         this.isPanelOpen = !this.isPanelOpen;
         const panel = document.getElementById('advancedParcelPanel');
         if (panel) {
@@ -672,6 +830,12 @@ class ParcelManager {
     }
     
     render() {
+        // 🎯 ULTRATHINK: UI 제거됨 - 렌더링 비활성화
+        if (this.uiDisabled) {
+            console.log('🚫 ParcelManager UI 비활성화 - 렌더링 스킵');
+            return;
+        }
+        
         const container = document.getElementById('parcelManagerContent');
         if (!container) return;
         
@@ -1169,5 +1333,5 @@ class ParcelManager {
     }
 }
 
-// 전역 인스턴스 생성
-window.parcelManager = new ParcelManager();
+// 🎯 ULTRATHINK: ParcelManager UI 완전 비활성화 - Supabase + Google Sheets 2중 백업 전용
+// window.parcelManager = new ParcelManager();

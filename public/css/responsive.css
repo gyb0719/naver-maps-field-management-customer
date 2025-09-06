@@ -224,8 +224,9 @@
         transform: translateY(-50%) !important;
     }
     
-    /* 고급 패널 모바일 */
+    /* 🎯 ULTRATHINK: ParcelManager UI 완전 제거 - Supabase + Google Sheets 2중 백업 전용 */
     .advanced-panel {
+        display: none !important; /* 완전 숨김 */
         width: 100%;
         height: 85vh;
         top: auto;

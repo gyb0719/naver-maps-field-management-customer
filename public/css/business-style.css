@@ -448,8 +448,9 @@ body {
     box-shadow: 0 2px 8px rgba(43, 87, 154, 0.3);
 }
 
-/* 필지 관리 시스템 패널 - 엔터프라이즈 스타일 */
+/* 🎯 ULTRATHINK: ParcelManager UI 완전 제거 - Supabase + Google Sheets 2중 백업 전용 */
 .advanced-panel {
+    display: none !important; /* 완전 숨김 */
     background: white;
     box-shadow: -2px 0 8px rgba(0,0,0,0.1);
     border-left: 1px solid var(--border-color);

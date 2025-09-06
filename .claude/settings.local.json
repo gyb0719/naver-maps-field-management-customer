@@ -71,7 +71,10 @@
       "Bash(del publicmigration-simple.html publicmigration-ui.html)",
       "Bash(move:*)",
       "Bash(git remote remove:*)",
-      "Bash(git remote add:*)"
+      "Bash(git remote add:*)",
+      "WebFetch(domain:navermaps.github.io)",
+      "Bash(npm test)",
+      "Bash(start http://localhost:3000)"
     ],
     "deny": [],
     "ask": []

@@ -154,10 +154,56 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+/* 🎯 ULTRATHINK: 패널 헤더와 색칠 토글 버튼 */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+
 .color-panel h3 {
     font-size: 0.9rem;
-    margin-bottom: 0.4rem;
+    margin: 0;
     color: #2c3e50;
+}
+
+.paint-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+
+.paint-toggle-btn.active {
+    background: #27ae60;
+    box-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
+}
+
+.paint-toggle-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.paint-toggle-btn:active {
+    transform: translateY(0);
+}
+
+.toggle-icon {
+    font-size: 14px;
+}
+
+.toggle-text {
+    font-size: 11px;
 }
 
 .color-palette {
@@ -556,6 +602,203 @@ body {
         opacity: 1;
         transform: translate(-50%, -50%) scale(1);
     }
+}
+
+/* 🎯 ULTRATHINK: 거리뷰 커스텀 화살표 네비게이션 스타일 */
+.street-nav {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    z-index: 1000;
+}
+
+.street-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border: 2px solid #6c5ce7;
+    border-radius: 25px;
+    padding: 12px 18px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+}
+
+.street-nav-btn:hover {
+    background: rgba(108, 92, 231, 0.9);
+    border-color: #a29bfe;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.5);
+}
+
+.street-nav-btn:active {
+    transform: translateY(0);
+}
+
+.street-nav-btn.prev {
+    flex-direction: row;
+}
+
+.street-nav-btn.next {
+    flex-direction: row-reverse;
+}
+
+.nav-text {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* 🎯 ULTRATHINK: 거리뷰에서 지도로 돌아가기 버튼 */
+.street-controls {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+.back-to-map-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border: 2px solid #00c851;
+    border-radius: 25px;
+    padding: 12px 18px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 200, 81, 0.3);
+}
+
+.back-to-map-btn:hover {
+    background: rgba(0, 200, 81, 0.9);
+    border-color: #2ed573;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 200, 81, 0.5);
+}
+
+.back-to-map-btn:active {
+    transform: translateY(0);
+}
+
+.back-text {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* 🎯 ULTRATHINK: 거리뷰 커스텀 미니맵 스타일 */
+.panorama-minimap {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 250px;
+    height: 200px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #6c5ce7;
+    border-radius: 15px;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+    z-index: 1000;
+}
+
+.minimap-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 35px;
+    background: rgba(108, 92, 231, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 1001;
+}
+
+.minimap-toggle {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#minimapContainer {
+    position: absolute;
+    top: 35px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #f0f0f0;
+}
+
+/* 🎯 ULTRATHINK: 거리뷰 화살표 네비게이션 스타일 */
+.panorama-nav {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.nav-horizontal {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-btn {
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border: 2px solid #6c5ce7;
+    border-radius: 50%;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-btn:hover {
+    background: rgba(108, 92, 231, 0.9);
+    border-color: #a29bfe;
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.5);
+}
+
+.nav-btn:active {
+    transform: scale(0.95);
 }
 
 /* 토스트 메시지 */

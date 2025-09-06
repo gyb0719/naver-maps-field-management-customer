@@ -269,6 +269,14 @@ class ViewportRenderer {
     renderParcelBatch(batch) {
         batch.forEach(parcel => {
             try {
+                // 🎯 ULTRATHINK: 중복 폴리곤 방지 - 이미 렌더링된 필지인지 확인
+                if (this.renderedParcels.has(parcel.id)) {
+                    const existingPolygon = this.renderedParcels.get(parcel.id);
+                    if (existingPolygon) {
+                        existingPolygon.setMap(null); // 기존 폴리곤 제거
+                    }
+                }
+                
                 const polygon = this.createParcelPolygon(parcel);
                 if (polygon) {
                     this.renderedParcels.set(parcel.id, polygon);
