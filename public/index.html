@@ -179,6 +179,10 @@
         <div class="ap-content">
             <div class="ap-header">
                 <h3>저장 필지 목록</h3>
+                <div class="cloud-status" id="cloudStatus">
+                    <span class="sync-indicator" id="syncIndicator" title="클라우드 동기화 상태">☁️</span>
+                    <span class="sync-text" id="syncText">오프라인</span>
+                </div>
                 <button class="ap-close" onclick="parcelManager.togglePanel()">✕</button>
             </div>
             <div id="parcelManagerContent" class="ap-body">
@@ -199,6 +203,8 @@
         });
     </script>
     <script src="/js/config-client.js"></script>
+    <script src="/js/data-manager.js"></script>
+    <script src="/js/sync-status.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/utils.js"></script>
     <script src="/js/calendar.js"></script>

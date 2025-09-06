@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실제 Supabase 마이그레이션</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2196f3;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .phase {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 5px solid #007bff;
+        }
+
+        .phase.active {
+            background: #e3f2fd;
+            border-left-color: #2196f3;
+        }
+
+        .phase.completed {
+            background: #e8f5e8;
+            border-left-color: #4caf50;
+        }
+
+        .phase.error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+
+        .phase h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+            width: 0%;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 160px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .log-info { background: #e3f2fd; color: #1976d2; }
+        .log-success { background: #e8f5e8; color: #388e3c; }
+        .log-warning { background: #fff3e0; color: #f57c00; }
+        .log-error { background: #ffebee; color: #d32f2f; }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .details {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid #e0e0e0;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 실제 Supabase 마이그레이션</h1>
+            <p>진짜 데이터베이스에 저장하는 완전한 테스트</p>
+        </div>
+
+        <div class="content">
+            <!-- 현재 데이터 현황 -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="localParcels">-</div>
+                    <div class="stat-label">로컬 필지</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="localMemos">-</div>
+                    <div class="stat-label">로컬 메모</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="supabaseParcels">-</div>
+                    <div class="stat-label">Supabase 필지</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="supabaseMemos">-</div>
+                    <div class="stat-label">Supabase 메모</div>
+                </div>
+            </div>
+
+            <!-- 마이그레이션 단계 -->
+            <div class="phase" id="phase1">
+                <h3>📋 1. 데이터 검증</h3>
+                <p>실제 필지와 메모 데이터의 무결성을 검증합니다.</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress1"></div>
+                </div>
+                <div id="validationDetails" class="details hidden"></div>
+            </div>
+
+            <div class="phase" id="phase2">
+                <h3>💾 2. 백업 생성</h3>
+                <p>실제 백업을 생성하고 다운로드합니다.</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress2"></div>
+                </div>
+            </div>
+
+            <div class="phase" id="phase3">
+                <h3>🔄 3. 실제 마이그레이션</h3>
+                <p>Supabase RPC 함수를 호출하여 실제로 데이터를 저장합니다.</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress3"></div>
+                </div>
+                <div id="migrationDetails" class="details hidden"></div>
+            </div>
+
+            <div class="phase" id="phase4">
+                <h3>✅ 4. 저장 검증</h3>
+                <p>Supabase 테이블에 실제로 저장되었는지 확인합니다.</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress4"></div>
+                </div>
+            </div>
+
+            <!-- 버튼들 -->
+            <div class="buttons">
+                <button class="btn btn-primary" id="validateBtn" onclick="startValidation()">
+                    <span id="validateText">검증 시작</span>
+                </button>
+                <button class="btn btn-success" id="migrateBtn" onclick="startRealMigration()" disabled>
+                    <span id="migrateText">실제 마이그레이션</span>
+                </button>
+                <button class="btn btn-danger" id="rollbackBtn" onclick="performRollback()" disabled>
+                    롤백 실행
+                </button>
+                <button class="btn btn-warning" id="googleBackupBtn" onclick="startGoogleBackup()">
+                    📊 Google Sheets 백업
+                </button>
+            </div>
+
+            <!-- 로그 -->
+            <div class="log" id="migrationLog">
+                <div class="log-entry log-info">실제 마이그레이션 시스템 준비 완료 ✅</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google API 로드 -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="/js/auth.js"></script>
+
+    <script>
+        // Supabase 설정
+        const SUPABASE_URL = 'https://iccixxihdsvbgbkuwdqj.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljY2l4eGloZHN2Ymdia3V3ZHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwOTYyNjksImV4cCI6MjA3MjY3MjI2OX0.sEiGF7sImn2aY4Bl1463DVVZOmZuczTXfkgTS2-A074';
+
+        let migrationInProgress = false;
+        let currentMigrationId = null;
+        let googleBackupInProgress = false;
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadDataStats();
+            addLog('실제 마이그레이션 시스템 로드 완료', 'success');
+        });
+
+        // 현재 데이터 통계 로드
+        async function loadDataStats() {
+            try {
+                const localData = getLocalStorageData();
+                document.getElementById('localParcels').textContent = localData.parcels.length.toLocaleString();
+                document.getElementById('localMemos').textContent = localData.memos.length.toLocaleString();
+
+                await updateSupabaseStats();
+                addLog(`로컬 데이터: 필지 ${localData.parcels.length}개, 메모 ${localData.memos.length}개`, 'info');
+            } catch (error) {
+                addLog(`통계 로드 실패: ${error.message}`, 'error');
+            }
+        }
+
+        // Supabase 통계 업데이트
+        async function updateSupabaseStats() {
+            try {
+                const parcelsResponse = await fetch(`${SUPABASE_URL}/rest/v1/parcels?select=id`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Prefer': 'count=exact'
+                    }
+                });
+
+                const memosResponse = await fetch(`${SUPABASE_URL}/rest/v1/memos?select=id`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Prefer': 'count=exact'
+                    }
+                });
+
+                const parcelCount = parcelsResponse.headers.get('content-range')?.split('/')[1] || 0;
+                const memoCount = memosResponse.headers.get('content-range')?.split('/')[1] || 0;
+
+                document.getElementById('supabaseParcels').textContent = parseInt(parcelCount).toLocaleString();
+                document.getElementById('supabaseMemos').textContent = parseInt(memoCount).toLocaleString();
+
+            } catch (error) {
+                document.getElementById('supabaseParcels').textContent = 'N/A';
+                document.getElementById('supabaseMemos').textContent = 'N/A';
+                addLog('Supabase 통계 조회 실패', 'warning');
+            }
+        }
+
+        // localStorage 데이터 추출
+        function getLocalStorageData() {
+            try {
+                const saved = localStorage.getItem('parcel-manager-data');
+                return saved ? JSON.parse(saved) : { parcels: [], memos: [] };
+            } catch (error) {
+                return { parcels: [], memos: [] };
+            }
+        }
+
+        // 데이터 검증
+        async function startValidation() {
+            const btn = document.getElementById('validateBtn');
+            const text = document.getElementById('validateText');
+            
+            btn.disabled = true;
+            text.innerHTML = '<span class="loading"></span>검증 중...';
+            
+            setPhaseActive('phase1');
+            addLog('실제 데이터 검증 시작...', 'info');
+
+            try {
+                const localData = getLocalStorageData();
+                
+                if (localData.parcels.length === 0) {
+                    throw new Error('마이그레이션할 필지 데이터가 없습니다');
+                }
+
+                // 실제 검증 로직
+                let validCount = 0;
+                let errorCount = 0;
+                const errors = [];
+
+                for (let i = 0; i < localData.parcels.length; i++) {
+                    const parcel = localData.parcels[i];
+                    
+                    try {
+                        validateParcel(parcel);
+                        validCount++;
+                    } catch (error) {
+                        errorCount++;
+                        errors.push(`필지 ${i + 1}: ${error.message}`);
+                    }
+
+                    const progress = ((i + 1) / localData.parcels.length) * 100;
+                    updateProgress('progress1', progress);
+                    
+                    if (i % 50 === 0) {
+                        await delay(10);
+                    }
+                }
+
+                updateProgress('progress1', 100);
+                setPhaseCompleted('phase1');
+
+                // 검증 결과 표시
+                const details = document.getElementById('validationDetails');
+                details.innerHTML = `
+                    <strong>검증 결과:</strong><br>
+                    ✅ 유효: ${validCount}개<br>
+                    ❌ 오류: ${errorCount}개<br>
+                    ${errors.length > 0 ? '<br><strong>오류 샘플:</strong><br>' + errors.slice(0, 5).join('<br>') : ''}
+                `;
+                details.classList.remove('hidden');
+
+                addLog(`검증 완료: 유효 ${validCount}개, 오류 ${errorCount}개`, validCount > errorCount ? 'success' : 'warning');
+                
+                if (validCount > localData.parcels.length * 0.8) {
+                    document.getElementById('migrateBtn').disabled = false;
+                } else {
+                    throw new Error('데이터 검증 실패: 너무 많은 오류');
+                }
+
+            } catch (error) {
+                setPhaseError('phase1');
+                addLog(`검증 실패: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                text.textContent = '재검증';
+            }
+        }
+
+        // 필지 검증
+        function validateParcel(parcel) {
+            if (!parcel.pnu || parcel.pnu.trim() === '') {
+                throw new Error('PNU 없음');
+            }
+            if (!parcel.coordinates || !Array.isArray(parcel.coordinates) || parcel.coordinates.length < 3) {
+                throw new Error('좌표 데이터 부족');
+            }
+            
+            for (const coord of parcel.coordinates) {
+                if (!coord.lat || !coord.lng) {
+                    throw new Error('좌표값 없음');
+                }
+                if (coord.lat < 33 || coord.lat > 39 || coord.lng < 124 || coord.lng > 132) {
+                    throw new Error('한국 영토 밖 좌표');
+                }
+            }
+            
+            return true;
+        }
+
+        // 실제 마이그레이션 시작
+        async function startRealMigration() {
+            if (migrationInProgress) return;
+            
+            if (!confirm('실제 Supabase에 데이터를 저장합니다.\n계속하시겠습니까?')) {
+                return;
+            }
+
+            migrationInProgress = true;
+            currentMigrationId = `migration_${Date.now()}`;
+            
+            const btn = document.getElementById('migrateBtn');
+            const text = document.getElementById('migrateText');
+            
+            btn.disabled = true;
+            text.innerHTML = '<span class="loading"></span>실제 마이그레이션 중...';
+            
+            document.getElementById('rollbackBtn').disabled = false;
+
+            try {
+                // 2단계: 백업 생성
+                await createRealBackup();
+
+                // 3단계: 실제 마이그레이션
+                await executeRealMigration();
+
+                // 4단계: 저장 검증
+                await verifyStorage();
+
+                addLog('🎉 실제 마이그레이션 성공 완료!', 'success');
+                
+                // 통계 업데이트
+                setTimeout(() => {
+                    loadDataStats();
+                }, 2000);
+
+            } catch (error) {
+                addLog(`마이그레이션 실패: ${error.message}`, 'error');
+                addLog('롤백을 실행하세요', 'warning');
+            } finally {
+                migrationInProgress = false;
+                btn.disabled = false;
+                text.textContent = '완료';
+            }
+        }
+
+        // 실제 백업 생성
+        async function createRealBackup() {
+            setPhaseActive('phase2');
+            addLog('실제 백업 생성 중...', 'info');
+            
+            const localData = getLocalStorageData();
+            const backup = {
+                timestamp: new Date().toISOString(),
+                migrationId: currentMigrationId,
+                version: '2.0',
+                type: 'real_migration_backup',
+                data: localData
+            };
+            
+            // 백업 파일 다운로드
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { 
+                type: 'application/json' 
+            });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `real-migration-backup-${currentMigrationId}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            updateProgress('progress2', 100);
+            setPhaseCompleted('phase2');
+            addLog('백업 파일 다운로드 완료', 'success');
+        }
+
+        // 실제 마이그레이션 실행
+        async function executeRealMigration() {
+            setPhaseActive('phase3');
+            addLog('실제 Supabase RPC 함수 호출 시작...', 'info');
+            
+            const localData = getLocalStorageData();
+            const BATCH_SIZE = 5; // 안전한 배치 크기
+            
+            let processedParcels = 0;
+            let processedMemos = 0;
+            let successCount = 0;
+            let errorCount = 0;
+
+            // 필지 마이그레이션
+            const parcelBatches = createBatches(localData.parcels, BATCH_SIZE);
+            
+            for (let i = 0; i < parcelBatches.length; i++) {
+                const batch = parcelBatches[i];
+                
+                try {
+                    const batchData = batch.map(parcel => ({
+                        pnu: parcel.pnu,
+                        address: parcel.address || '',
+                        jibun: parcel.jibun || '',
+                        area: parcel.area || 0,
+                        owner_name: parcel.ownerName || '',
+                        geometry: coordinatesToWKT(parcel.coordinates),
+                        centerLng: parcel.lng || 0,
+                        centerLat: parcel.lat || 0,
+                        color: parcel.color || 'red',
+                        rawVworldData: parcel.rawData || {}
+                    }));
+
+                    // 실제 Supabase RPC 호출
+                    const result = await callSupabaseRPC('secure_batch_insert', {
+                        batch_type: 'parcels',
+                        batch_data: batchData,
+                        input_migration_id: currentMigrationId
+                    });
+
+                    if (result && result.length > 0) {
+                        successCount += result[0].count || 0;
+                        if (result[0].errors && result[0].errors.length > 0) {
+                            errorCount += result[0].errors.length;
+                            addLog(`배치 ${i + 1} 일부 오류: ${result[0].errors.length}개`, 'warning');
+                        }
+                    }
+
+                    processedParcels += batch.length;
+                    const progress = (processedParcels / localData.parcels.length) * 70; // 70%까지
+                    updateProgress('progress3', progress);
+                    
+                    addLog(`필지 배치 ${i + 1}/${parcelBatches.length} 처리 완료 (${batch.length}개)`, 'info');
+                    
+                    // 서버 부하 방지
+                    await delay(200);
+                    
+                } catch (error) {
+                    errorCount += batch.length;
+                    addLog(`필지 배치 ${i + 1} 실패: ${error.message}`, 'error');
+                }
+            }
+
+            // 메모 마이그레이션 (필지 저장 완료 후)
+            if (localData.memos.length > 0) {
+                addLog('메모 마이그레이션 시작...', 'info');
+                
+                // 저장된 필지의 PNU -> ID 매핑 생성
+                const parcelMapping = await createParcelMapping();
+                
+                const memosWithIds = localData.memos.map(memo => ({
+                    parcel_id: parcelMapping[memo.pnu],
+                    content: memo.content || ''
+                })).filter(memo => memo.parcel_id);
+
+                const memoBatches = createBatches(memosWithIds, BATCH_SIZE);
+                
+                for (let i = 0; i < memoBatches.length; i++) {
+                    const batch = memoBatches[i];
+                    
+                    try {
+                        const result = await callSupabaseRPC('secure_batch_insert', {
+                            batch_type: 'memos',
+                            batch_data: batch,
+                            input_migration_id: currentMigrationId
+                        });
+
+                        if (result && result.length > 0) {
+                            processedMemos += result[0].count || 0;
+                        }
+                        
+                        const progress = 70 + ((i + 1) / memoBatches.length) * 30; // 70%-100%
+                        updateProgress('progress3', progress);
+                        
+                        addLog(`메모 배치 ${i + 1}/${memoBatches.length} 처리 완료`, 'info');
+                        await delay(200);
+                        
+                    } catch (error) {
+                        addLog(`메모 배치 ${i + 1} 실패: ${error.message}`, 'error');
+                    }
+                }
+            }
+
+            updateProgress('progress3', 100);
+            setPhaseCompleted('phase3');
+
+            // 마이그레이션 결과 표시
+            const details = document.getElementById('migrationDetails');
+            details.innerHTML = `
+                <strong>마이그레이션 결과:</strong><br>
+                ✅ 성공한 필지: ${successCount}개<br>
+                ❌ 실패한 필지: ${errorCount}개<br>
+                ✅ 처리된 메모: ${processedMemos}개<br>
+                🔑 마이그레이션 ID: ${currentMigrationId}
+            `;
+            details.classList.remove('hidden');
+
+            addLog(`실제 마이그레이션 완료: 필지 ${successCount}개, 메모 ${processedMemos}개`, 'success');
+        }
+
+        // Supabase RPC 함수 호출
+        async function callSupabaseRPC(functionName, params) {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify(params)
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(`RPC 호출 실패: ${response.status} - ${error}`);
+            }
+
+            return await response.json();
+        }
+
+        // 필지 매핑 생성
+        async function createParcelMapping() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/parcels?select=id,pnu&migration_id=eq.${currentMigrationId}`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('필지 매핑 조회 실패');
+                
+                const parcels = await response.json();
+                const mapping = {};
+                parcels.forEach(parcel => {
+                    mapping[parcel.pnu] = parcel.id;
+                });
+                
+                return mapping;
+            } catch (error) {
+                addLog(`필지 매핑 생성 실패: ${error.message}`, 'error');
+                return {};
+            }
+        }
+
+        // 저장 검증
+        async function verifyStorage() {
+            setPhaseActive('phase4');
+            addLog('Supabase 저장 검증 중...', 'info');
+            
+            try {
+                // 실제 저장된 데이터 확인
+                const result = await callSupabaseRPC('get_migration_status', {
+                    input_migration_id: currentMigrationId
+                });
+
+                if (result && result.length > 0) {
+                    const status = result[0];
+                    addLog(`검증 완료 - 필지: ${status.parcel_count}개, 메모: ${status.memo_count}개`, 'success');
+                    
+                    updateProgress('progress4', 100);
+                    setPhaseCompleted('phase4');
+                } else {
+                    throw new Error('마이그레이션 상태를 확인할 수 없습니다');
+                }
+                
+            } catch (error) {
+                setPhaseError('phase4');
+                addLog(`저장 검증 실패: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 롤백 실행
+        async function performRollback() {
+            if (!currentMigrationId) {
+                addLog('롤백할 마이그레이션 ID가 없습니다', 'warning');
+                return;
+            }
+
+            if (!confirm(`마이그레이션 ID: ${currentMigrationId}\n정말로 롤백하시겠습니까?`)) {
+                return;
+            }
+
+            const btn = document.getElementById('rollbackBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>롤백 중...';
+
+            try {
+                const result = await callSupabaseRPC('emergency_rollback', {
+                    input_migration_id: currentMigrationId
+                });
+
+                if (result && result.length > 0) {
+                    const rollback = result[0];
+                    addLog(`롤백 완료: 필지 ${rollback.deleted_parcels}개, 메모 ${rollback.deleted_memos}개 삭제`, 'success');
+                    
+                    setTimeout(() => {
+                        loadDataStats();
+                    }, 1000);
+                }
+
+            } catch (error) {
+                addLog(`롤백 실패: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '롤백 실행';
+            }
+        }
+
+        // 유틸리티 함수들
+        function createBatches(array, size) {
+            const batches = [];
+            for (let i = 0; i < array.length; i += size) {
+                batches.push(array.slice(i, i + size));
+            }
+            return batches;
+        }
+
+        function coordinatesToWKT(coordinates) {
+            if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 3) {
+                return null;
+            }
+
+            const coords = [...coordinates];
+            const first = coords[0];
+            const last = coords[coords.length - 1];
+            
+            if (first.lng !== last.lng || first.lat !== last.lat) {
+                coords.push(first);
+            }
+
+            const wktCoords = coords
+                .map(coord => `${coord.lng} ${coord.lat}`)
+                .join(', ');
+            
+            return `POLYGON((${wktCoords}))`;
+        }
+
+        function setPhaseActive(phaseId) {
+            const phase = document.getElementById(phaseId);
+            phase.classList.add('active');
+        }
+
+        function setPhaseCompleted(phaseId) {
+            const phase = document.getElementById(phaseId);
+            phase.classList.remove('active');
+            phase.classList.add('completed');
+        }
+
+        function setPhaseError(phaseId) {
+            const phase = document.getElementById(phaseId);
+            phase.classList.remove('active');
+            phase.classList.add('error');
+        }
+
+        function updateProgress(progressId, percent) {
+            const progress = document.getElementById(progressId);
+            progress.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+        }
+
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('migrationLog');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Google Sheets 백업 시작
+        async function startGoogleBackup() {
+            if (googleBackupInProgress) return;
+            
+            const localData = getLocalStorageData();
+            if (!localData || !localData.parcels || localData.parcels.length === 0) {
+                alert('백업할 로컬 데이터가 없습니다.\n테스트 데이터를 먼저 생성하세요.');
+                return;
+            }
+
+            if (!confirm(`Google Sheets에 데이터를 백업합니다.\n\n필지: ${localData.parcels.length}개\n메모: ${localData.memos?.length || 0}개\n\n계속하시겠습니까?`)) {
+                return;
+            }
+
+            googleBackupInProgress = true;
+            const btn = document.getElementById('googleBackupBtn');
+            const originalText = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Google 로그인 중...';
+
+            try {
+                // Google API 초기화 확인
+                await GoogleAuth.initializeAuth();
+                
+                // Google 인증 확인
+                if (!GoogleAuth.isAuthenticated()) {
+                    addLog('Google 로그인이 필요합니다...', 'info');
+                    
+                    // 토큰 요청
+                    const tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: GoogleAuth.CLIENT_ID,
+                        scope: GoogleAuth.SCOPES,
+                        callback: async (tokenResponse) => {
+                            GoogleAuth.saveTokens(tokenResponse);
+                            addLog('✅ Google 인증 완료', 'success');
+                            await performBackup();
+                        },
+                        error_callback: (error) => {
+                            throw new Error('Google 인증 실패: ' + error.message);
+                        }
+                    });
+                    
+                    tokenClient.requestAccessToken();
+                    return;
+                }
+
+                await performBackup();
+
+            } catch (error) {
+                addLog(`❌ Google 백업 실패: ${error.message}`, 'error');
+                
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    addLog('Google 인증이 만료되었습니다. 다시 로그인해주세요.', 'warning');
+                }
+                
+                googleBackupInProgress = false;
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+
+            async function performBackup() {
+                try {
+                    btn.innerHTML = '<span class="loading"></span>필지 데이터 백업 중...';
+                    addLog('📊 필지 데이터 백업 시작...', 'info');
+                    
+                    // 데이터 구조 디버깅
+                    console.log('=== 백업 데이터 디버깅 ===');
+                    console.log('전체 데이터:', localData);
+                    console.log('필지 수:', localData.parcels.length);
+                    console.log('첫 번째 필지:', localData.parcels[0]);
+                    if (localData.memos) {
+                        console.log('메모 수:', localData.memos.length);
+                        console.log('첫 번째 메모:', localData.memos[0]);
+                    }
+
+                    // 필지 데이터 백업
+                    const parcelResult = await GoogleAuth.backupParcelsToSheets(
+                        localData.parcels,
+                        (progress, message) => {
+                            btn.innerHTML = `<span class="loading"></span>필지 백업 중... ${progress}%`;
+                            if (progress % 10 === 0) { // 10%마다 로그
+                                addLog(`📊 필지 백업: ${message}`, 'info');
+                            }
+                        }
+                    );
+
+                    addLog(`✅ 필지 백업 완료: ${parcelResult.processedCount}개`, 'success');
+                    
+                    // 메모 데이터 백업 (있는 경우)
+                    if (localData.memos && localData.memos.length > 0) {
+                        btn.innerHTML = '<span class="loading"></span>메모 데이터 백업 중...';
+                        addLog('📝 메모 데이터 백업 시작...', 'info');
+                        
+                        const memoResult = await GoogleAuth.backupMemosToSheets(
+                            localData.memos,
+                            (progress, message) => {
+                                btn.innerHTML = `<span class="loading"></span>메모 백업 중... ${progress}%`;
+                                if (progress % 10 === 0) {
+                                    addLog(`📝 메모 백업: ${message}`, 'info');
+                                }
+                            }
+                        );
+
+                        addLog(`✅ 메모 백업 완료: ${memoResult.processedCount}개`, 'success');
+                    }
+
+                    addLog('🎉 Google Sheets 백업 완료!', 'success');
+                    
+                    // 백업 링크 제공
+                    const parcelSheetUrl = `https://docs.google.com/spreadsheets/d/${parcelResult.spreadsheetId}`;
+                    addLog(`📊 백업 시트 링크: ${parcelSheetUrl}`, 'info');
+                    
+                    if (confirm('백업된 Google Sheets를 새 탭에서 여시겠습니까?')) {
+                        window.open(parcelSheetUrl, '_blank');
+                    }
+
+                } catch (error) {
+                    throw error;
+                } finally {
+                    googleBackupInProgress = false;
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            }
+        }
+
+        // 페이지 언로드 방지
+        window.addEventListener('beforeunload', (e) => {
+            if (migrationInProgress || googleBackupInProgress) {
+                e.preventDefault();
+                e.returnValue = '작업이 진행 중입니다.';
+            }
+        });
+    </script>
+</body>
+</html>

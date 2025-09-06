@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테스트 데이터 생성기</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        input[type="number"]:focus {
+            border-color: #2196f3;
+            outline: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #bbdefb;
+        }
+        
+        .status.warning {
+            background: #fff3e0;
+            color: #ef6c00;
+            border: 1px solid #ffcc02;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .data-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .data-info h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .data-info ul {
+            margin-left: 20px;
+        }
+        
+        .data-info li {
+            margin-bottom: 8px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 테스트 데이터 생성기</h1>
+        <p>마이그레이션 테스트를 위한 샘플 필지 데이터를 생성합니다.</p>
+        
+        <div class="input-group">
+            <label for="parcelCount">생성할 필지 수:</label>
+            <input type="number" id="parcelCount" value="100" min="10" max="1000">
+            <small style="color: #666;">추천: 100개 (빠른 테스트용)</small>
+        </div>
+        
+        <div class="input-group">
+            <label for="memoCount">생성할 메모 수:</label>
+            <input type="number" id="memoCount" value="50" min="0" max="500">
+            <small style="color: #666;">필지 수의 절반 정도 추천</small>
+        </div>
+        
+        <div class="data-info">
+            <h3>📋 생성될 데이터 구조:</h3>
+            <ul>
+                <li><strong>필지:</strong> 서울 강남구 실제 좌표 기반</li>
+                <li><strong>PNU:</strong> 고유 번호 자동 생성</li>
+                <li><strong>주소:</strong> 강남구 역삼동, 논현동 등</li>
+                <li><strong>좌표:</strong> PostGIS 호환 폴리곤</li>
+                <li><strong>색상:</strong> 무작위 색상 배정</li>
+                <li><strong>메모:</strong> 각 필지별 관리 메모</li>
+            </ul>
+        </div>
+        
+        <div class="progress hidden" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div id="status" class="status hidden"></div>
+        
+        <div class="buttons">
+            <button class="btn" onclick="generateTestData()" id="generateBtn">
+                📦 테스트 데이터 생성
+            </button>
+            <button class="btn btn-danger" onclick="clearData()" id="clearBtn">
+                🗑️ 기존 데이터 삭제
+            </button>
+            <button class="btn btn-primary" onclick="goToMigration()" id="migrationBtn" disabled>
+                🚀 마이그레이션 페이지로
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 서울 강남구 실제 좌표 데이터
+        const GANGNAM_AREAS = [
+            { name: '역삼동', center: [127.0276, 37.5006], bounds: 0.005 },
+            { name: '논현동', center: [127.0220, 37.5142], bounds: 0.004 },
+            { name: '압구정동', center: [127.0276, 37.5274], bounds: 0.006 },
+            { name: '청담동', center: [127.0486, 37.5197], bounds: 0.005 },
+            { name: '삼성동', center: [127.0633, 37.5140], bounds: 0.007 },
+            { name: '대치동', center: [127.0633, 37.4951], bounds: 0.008 }
+        ];
+
+        const COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan'];
+
+        async function generateTestData() {
+            const parcelCount = parseInt(document.getElementById('parcelCount').value);
+            const memoCount = parseInt(document.getElementById('memoCount').value);
+            
+            if (parcelCount < 10 || parcelCount > 1000) {
+                showStatus('필지 수는 10~1000 사이로 설정해주세요.', 'warning');
+                return;
+            }
+            
+            const generateBtn = document.getElementById('generateBtn');
+            const migrationBtn = document.getElementById('migrationBtn');
+            
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="loading"></span>생성 중...';
+            
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            
+            progressContainer.classList.remove('hidden');
+            
+            try {
+                showStatus('테스트 데이터 생성을 시작합니다...', 'info');
+                
+                const parcels = [];
+                const memos = [];
+                
+                // 필지 데이터 생성
+                for (let i = 0; i < parcelCount; i++) {
+                    const area = GANGNAM_AREAS[Math.floor(Math.random() * GANGNAM_AREAS.length)];
+                    const parcel = generateParcel(i + 1, area);
+                    parcels.push(parcel);
+                    
+                    // 진행률 업데이트
+                    const progress = ((i + 1) / parcelCount) * 70; // 70%까지
+                    progressBar.style.width = `${progress}%`;
+                    
+                    // UI 업데이트를 위한 짧은 딜레이
+                    if (i % 10 === 0) {
+                        await delay(10);
+                    }
+                }
+                
+                showStatus(`필지 ${parcelCount}개 생성 완료. 메모 생성 중...`, 'info');
+                
+                // 메모 데이터 생성
+                for (let i = 0; i < memoCount; i++) {
+                    const randomParcel = parcels[Math.floor(Math.random() * parcels.length)];
+                    const memo = generateMemo(randomParcel.pnu);
+                    memos.push(memo);
+                    
+                    // 진행률 업데이트
+                    const progress = 70 + ((i + 1) / memoCount) * 30; // 70%~100%
+                    progressBar.style.width = `${progress}%`;
+                    
+                    if (i % 5 === 0) {
+                        await delay(10);
+                    }
+                }
+                
+                progressBar.style.width = '100%';
+                
+                // localStorage에 저장
+                const testData = { parcels, memos };
+                localStorage.setItem('parcel-manager-data', JSON.stringify(testData));
+                
+                showStatus(
+                    `✅ 테스트 데이터 생성 완료!\n필지: ${parcelCount}개\n메모: ${memoCount}개\n\n이제 마이그레이션을 테스트할 수 있습니다.`,
+                    'success'
+                );
+                
+                migrationBtn.disabled = false;
+                
+            } catch (error) {
+                showStatus(`❌ 데이터 생성 실패: ${error.message}`, 'warning');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = '📦 테스트 데이터 재생성';
+            }
+        }
+        
+        function generateParcel(index, area) {
+            const centerLng = area.center[0] + (Math.random() - 0.5) * area.bounds;
+            const centerLat = area.center[1] + (Math.random() - 0.5) * area.bounds;
+            
+            // 사각형 폴리곤 생성 (실제 필지 모양 시뮬레이션)
+            const size = 0.0003 + Math.random() * 0.0002; // 필지 크기 랜덤
+            const coordinates = [
+                { lng: centerLng - size, lat: centerLat - size },
+                { lng: centerLng + size, lat: centerLat - size },
+                { lng: centerLng + size, lat: centerLat + size },
+                { lng: centerLng - size, lat: centerLat + size },
+                { lng: centerLng - size, lat: centerLat - size } // 폴리곤 닫기
+            ];
+            
+            return {
+                pnu: `TEST_${String(index).padStart(6, '0')}`,
+                address: `서울특별시 강남구 ${area.name} ${100 + index}번지`,
+                jibun: `${area.name} ${100 + index}`,
+                coordinates: coordinates,
+                lat: centerLat,
+                lng: centerLng,
+                area: Math.round((size * 2) * (size * 2) * 111000 * 111000), // 대략적인 면적 (제곱미터)
+                color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                ownerName: `소유자${index}`,
+                created: new Date().toISOString(),
+                rawData: {
+                    source: 'test_generator',
+                    version: '1.0'
+                }
+            };
+        }
+        
+        function generateMemo(pnu) {
+            const memoTypes = [
+                '매매 문의 있음',
+                '임대 가능 여부 확인 필요',
+                '재개발 예정 지역',
+                '가격 협상 가능',
+                '우선 검토 대상',
+                '추가 조사 필요',
+                '법적 검토 완료',
+                '투자 가치 높음',
+                '접근성 우수',
+                '주변 인프라 양호'
+            ];
+            
+            return {
+                pnu: pnu,
+                content: memoTypes[Math.floor(Math.random() * memoTypes.length)],
+                created: new Date().toISOString()
+            };
+        }
+        
+        function clearData() {
+            if (confirm('기존에 저장된 모든 데이터를 삭제하시겠습니까?')) {
+                localStorage.removeItem('parcel-manager-data');
+                showStatus('기존 데이터가 삭제되었습니다.', 'info');
+                document.getElementById('migrationBtn').disabled = true;
+            }
+        }
+        
+        function goToMigration() {
+            window.open('/migration-simple.html', '_blank');
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            status.classList.remove('hidden');
+        }
+        
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        // 페이지 로드 시 기존 데이터 확인
+        document.addEventListener('DOMContentLoaded', () => {
+            const existingData = localStorage.getItem('parcel-manager-data');
+            if (existingData) {
+                try {
+                    const data = JSON.parse(existingData);
+                    showStatus(
+                        `기존 데이터가 있습니다: 필지 ${data.parcels?.length || 0}개, 메모 ${data.memos?.length || 0}개`,
+                        'info'
+                    );
+                    document.getElementById('migrationBtn').disabled = false;
+                } catch (error) {
+                    showStatus('기존 데이터 형식이 올바르지 않습니다.', 'warning');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
