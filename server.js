@@ -130,6 +130,63 @@ app.get('/api/vworld', async (req, res) => {
     }
 });
 
+// Naver Geocoding API 프록시
+app.get('/api/naver/geocode', async (req, res) => {
+    // CORS 헤더 설정
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    try {
+        const { query } = req.query;
+        
+        if (!query) {
+            return res.status(400).json({ error: '검색어가 필요합니다' });
+        }
+
+        const naverClientId = process.env.NAVER_CLIENT_ID;
+        const naverClientSecret = process.env.NAVER_CLIENT_SECRET;
+
+        if (!naverClientId || !naverClientSecret) {
+            return res.status(500).json({ error: 'Naver API 설정이 필요합니다' });
+        }
+
+        const { default: fetch } = await import('node-fetch');
+        const response = await fetch(
+            `https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(query)}`,
+            {
+                method: 'GET',
+                headers: {
+                    'X-NCP-APIGW-API-KEY-ID': naverClientId,
+                    'X-NCP-APIGW-API-KEY': naverClientSecret
+                }
+            }
+        );
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            res.json(data);
+        } else {
+            console.error('Naver Geocoding API 오류:', data);
+            res.status(response.status).json(data);
+        }
+
+    } catch (error) {
+        console.error('Naver 프록시 오류:', error);
+        res.status(500).json({ 
+            error: 'Naver API 프록시 서버 오류', 
+            message: error.message 
+        });
+    }
+});
+
+// Google Sheets 프록시 (추후 구현)
+app.post('/api/sheets/export', async (req, res) => {
+    // 향후 Google Sheets API 직접 연동 시 사용
+    res.status(501).json({ error: 'Google Sheets 프록시는 아직 구현되지 않았습니다' });
+});
+
 // 기본 라우트
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
