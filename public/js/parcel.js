@@ -502,8 +502,8 @@ function displayParcelInfo(parcel) {
     }
 }
 
-// 필지 데이터 저장
-function saveParcelData() {
+// 필지 데이터 저장 (실시간 동기화 적용)
+async function saveParcelData() {
     const parcelNumber = document.getElementById('parcelNumber').value;
     
     if (!parcelNumber) {
@@ -589,22 +589,73 @@ function saveParcelData() {
         isSearchParcel: isSearchParcel // 검색 필지 여부 저장
     };
     
-    // LocalStorage에 저장
-    let savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
+    // 실시간 동기화를 통한 저장 (localStorage + Supabase)
+    let savedData = [];
+    let syncResult = { local: false, cloud: false };
     
-    // 기존 데이터 업데이트 또는 추가 (PNU와 parcelNumber 둘 다 확인)
-    const existingIndex = savedData.findIndex(item => 
-        (item.pnu && item.pnu === currentPNU) || 
-        item.parcelNumber === formData.parcelNumber
-    );
-    
-    if (existingIndex > -1) {
-        savedData[existingIndex] = formData;
-    } else {
-        savedData.push(formData);
+    try {
+        if (window.dataManager) {
+            // DataManager를 통한 하이브리드 저장
+            savedData = window.dataManager.loadLocal();
+        } else {
+            // 백업으로 기존 방식 사용
+            savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
+        }
+        
+        // 기존 데이터 업데이트 또는 추가 (PNU와 parcelNumber 둘 다 확인)
+        const existingIndex = savedData.findIndex(item => 
+            (item.pnu && item.pnu === currentPNU) || 
+            item.parcelNumber === formData.parcelNumber
+        );
+        
+        if (existingIndex > -1) {
+            savedData[existingIndex] = formData;
+            console.log(`🔄 기존 필지 업데이트: ${formData.parcelNumber} (${currentPNU})`);
+        } else {
+            savedData.push(formData);
+            console.log(`🆕 새 필지 추가: ${formData.parcelNumber} (${currentPNU})`);
+        }
+        
+        if (window.dataManager) {
+            // 실시간 동기화 저장
+            syncResult = await window.dataManager.save(savedData);
+            console.log('🔄 실시간 동기화 저장 결과:', syncResult);
+            
+            if (syncResult.errors && syncResult.errors.length > 0) {
+                console.warn('일부 동기화 오류:', syncResult.errors);
+            }
+        } else {
+            // 백업으로 기존 localStorage 저장
+            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(savedData));
+            syncResult.local = true;
+        }
+        
+    } catch (error) {
+        console.error('저장 중 오류 발생:', error);
+        
+        // 오류 시 백업으로 localStorage 저장
+        try {
+            savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
+            const existingIndex = savedData.findIndex(item => 
+                (item.pnu && item.pnu === currentPNU) || 
+                item.parcelNumber === formData.parcelNumber
+            );
+            
+            if (existingIndex > -1) {
+                savedData[existingIndex] = formData;
+            } else {
+                savedData.push(formData);
+            }
+            
+            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(savedData));
+            syncResult.local = true;
+            console.log('백업 저장 완료');
+        } catch (backupError) {
+            console.error('백업 저장도 실패:', backupError);
+            alert('저장에 실패했습니다. 다시 시도해주세요.');
+            return;
+        }
     }
-    
-    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(savedData));
     
     // Map에도 업데이트 (검색 필지인지 클릭 필지인지에 따라 다른 Map 사용)
     const targetMap = isSearchParcel ? window.searchParcels : window.clickParcels;
@@ -662,7 +713,15 @@ function saveParcelData() {
     // 지번은 검색 결과를 유지하기 위해 그대로 둠
     console.log('✅ 저장 완료 - 폼 초기화 (지번 유지):', savedParcelNumber);
     
-    alert('저장되었습니다.');
+    // 동기화 상태에 따른 메시지
+    let message = '저장되었습니다.';
+    if (syncResult.local && syncResult.cloud) {
+        message = '저장 완료! 클라우드에도 자동 동기화되었습니다. 🌐';
+    } else if (syncResult.local) {
+        message = '로컬에 저장되었습니다. 클라우드 동기화는 자동으로 진행됩니다. ⏳';
+    }
+    
+    alert(message);
 }
 
 // 저장된 필지 데이터 가져오기

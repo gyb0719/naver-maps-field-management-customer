@@ -20,8 +20,8 @@ function toggleParcelPanel() {
     }
 }
 
-// 모든 필지 삭제
-function clearAllParcels() {
+// 모든 필지 삭제 (실시간 동기화 적용)
+async function clearAllParcels() {
     if (!confirm('모든 필지를 삭제하시겠습니까?')) return;
     
     if (typeof window.savedParcels !== 'undefined') {
@@ -29,13 +29,15 @@ function clearAllParcels() {
     }
     
     updateParcelListDisplay();
-    saveToLocalStorage();
+    await saveToLocalStorage(); // 실시간 동기화
     
     // 지도에서 폴리곤 제거
     if (window.parcelPolygons) {
         window.parcelPolygons.forEach(polygon => polygon.setMap(null));
         window.parcelPolygons = [];
     }
+    
+    console.log('✅ 모든 필지 삭제 완료 - 실시간 동기화됨');
 }
 
 // 필지 데이터 내보내기
@@ -166,11 +168,14 @@ function focusOnParcel(parcel) {
     }
 }
 
-// 필지 삭제
-function deleteParcel(index) {
+// 필지 삭제 (실시간 동기화 적용)
+async function deleteParcel(index) {
     if (!confirm('이 필지를 삭제하시겠습니까?')) return;
     
     if (window.savedParcels && window.savedParcels[index]) {
+        // 삭제될 필지 정보 저장 (로그용)
+        const deletedParcel = window.savedParcels[index];
+        
         // 폴리곤 제거
         if (window.parcelPolygons && window.parcelPolygons[index]) {
             window.parcelPolygons[index].setMap(null);
@@ -182,13 +187,35 @@ function deleteParcel(index) {
         
         // 업데이트
         updateParcelListDisplay();
-        saveToLocalStorage();
+        await saveToLocalStorage(); // 실시간 동기화
+        
+        console.log(`✅ 필지 삭제 완료: ${deletedParcel.address || deletedParcel.pnu || 'Unknown'} - 실시간 동기화됨`);
     }
 }
 
-// 로컬 스토리지에 저장
-function saveToLocalStorage() {
-    if (window.savedParcels) {
+// 실시간 동기화를 통한 저장 (localStorage + Supabase)
+async function saveToLocalStorage() {
+    if (window.savedParcels && window.dataManager) {
+        try {
+            // DataManager를 통한 하이브리드 저장 (실시간 동기화)
+            const result = await window.dataManager.save(window.savedParcels);
+            
+            console.log('🔄 실시간 동기화 저장 결과:', result);
+            
+            // 저장 결과를 사용자에게 알림 (선택적)
+            if (result.errors && result.errors.length > 0) {
+                console.warn('저장 중 일부 오류:', result.errors);
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('실시간 동기화 저장 실패:', error);
+            
+            // 백업으로 기존 localStorage 저장 방식 사용
+            localStorage.setItem('savedParcels', JSON.stringify(window.savedParcels));
+        }
+    } else if (window.savedParcels) {
+        // DataManager가 없으면 기존 방식 사용
         localStorage.setItem('savedParcels', JSON.stringify(window.savedParcels));
     }
 }
