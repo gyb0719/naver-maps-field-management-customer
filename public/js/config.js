@@ -1,8 +1,7 @@
-// API 설정
+// API 설정 - 보안 강화를 위해 서버 프록시 사용
 const CONFIG = {
-    NAVER_CLIENT_ID: 'xzbnwd2h1z',
-    NAVER_CLIENT_SECRET: 'hD9Ur25tFD98XqcHUqhT9KcL5X3jckwR9VifsazY',
-    VWORLD_API_KEY: '5090194F-13E2-3910-80E3-A9B3841ECFCB',
+    NAVER_CLIENT_ID: 'xzbnwd2h1z', // 공개 키이므로 노출 가능
+    // 민감한 키들은 제거하고 서버 프록시를 통해 사용
     GOOGLE_SHEETS_URL: '', // Google Apps Script URL (나중에 설정)
     
     // 지도 초기 설정

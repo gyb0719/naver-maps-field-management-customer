@@ -18,6 +18,16 @@ app.use('/assets', express.static(path.join(__dirname, 'srcassets')));
 app.use('/components', express.static(path.join(__dirname, 'srccomponents')));
 app.use('/pages', express.static(path.join(__dirname, 'srcpages')));
 
+// 클라이언트 설정 제공 (공개 가능한 설정만)
+app.get('/api/config', (req, res) => {
+    res.json({
+        NAVER_CLIENT_ID: process.env.NAVER_CLIENT_ID || 'xzbnwd2h1z',
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+        SUPABASE_URL: process.env.SUPABASE_URL,
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
+    });
+});
+
 // VWorld API 프록시 라우트
 app.get('/api/vworld', async (req, res) => {
     // CORS 헤더 설정
@@ -41,14 +51,14 @@ app.get('/api/vworld', async (req, res) => {
             crs = 'EPSG:4326'
         } = req.query;
         
-        // VWorld API 키들
+        // VWorld API 키들 - 환경 변수에서 로드
         const apiKeys = [
-            '5090194F-13E2-3910-80E3-A9B3841ECFCB',
-            key || '5090194F-13E2-3910-80E3-A9B3841ECFCB',
-            'CEB482F7-CF7C-333B-B02C-4E7111C3AC77',
-            '8C62256B-1D08-32FF-AB3C-1FCD67242196',
-            'BBAC532E-A56D-34CF-B520-CE68E8D6D52A'
-        ];
+            process.env.VWORLD_API_KEY_1,
+            process.env.VWORLD_API_KEY_2,
+            process.env.VWORLD_API_KEY_3,
+            process.env.VWORLD_API_KEY_4,
+            key // 클라이언트에서 제공한 키도 시도
+        ].filter(Boolean); // null/undefined 제거
         
         let lastError;
         let successResult;

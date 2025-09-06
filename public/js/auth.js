@@ -1,8 +1,8 @@
 // Google OAuth 인증 관리
 
 const GoogleAuth = {
-    // OAuth 설정
-    CLIENT_ID: '506368463001-um0b25os2vlep7mumonf63pcm9c9a0n3.apps.googleusercontent.com',
+    // OAuth 설정 - 환경 변수로 이동 예정
+    CLIENT_ID: null, // 서버에서 제공받을 예정
     DISCOVERY_DOCS: [
         'https://sheets.googleapis.com/$discovery/rest?version=v4',
         'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'
