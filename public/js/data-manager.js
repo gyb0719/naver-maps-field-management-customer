@@ -68,22 +68,281 @@ class DataManager {
         }
     }
 
-    // Supabase 연결 테스트
+    // 종합적인 Supabase 설정 검증
     async testSupabaseConnection() {
-        const response = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/ping`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': this.SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
-            }
-        });
+        const setupChecks = {
+            connection: false,
+            tables: false,
+            functions: false,
+            extensions: false,
+            permissions: false
+        };
 
-        if (!response.ok) {
-            throw new Error(`Supabase 연결 실패: ${response.status}`);
+        let setupErrors = [];
+
+        try {
+            // 1. 기본 연결 테스트
+            console.log('🔍 Supabase 연결 테스트 중...');
+            
+            const pingResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/ping`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': this.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                }
+            });
+
+            if (pingResponse.ok) {
+                setupChecks.connection = true;
+                console.log('✅ 기본 연결: 성공');
+            } else {
+                throw new Error(`기본 연결 실패: ${pingResponse.status}`);
+            }
+
+            // 2. 필수 테이블 존재 확인
+            console.log('🔍 데이터베이스 테이블 확인 중...');
+            
+            const tablesResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/parcels?select=count&limit=1`, {
+                method: 'HEAD',
+                headers: {
+                    'apikey': this.SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                }
+            });
+
+            if (tablesResponse.ok) {
+                setupChecks.tables = true;
+                console.log('✅ 데이터베이스 테이블: 존재함');
+            } else if (tablesResponse.status === 404) {
+                setupErrors.push('parcels 테이블이 존재하지 않습니다');
+            } else {
+                setupErrors.push(`테이블 접근 실패: ${tablesResponse.status}`);
+            }
+
+            // 3. 필수 RPC 함수들 확인
+            console.log('🔍 RPC 함수 확인 중...');
+            
+            const functionsToTest = [
+                { name: 'secure_batch_insert', description: '배치 삽입 함수' },
+                { name: 'emergency_rollback', description: '롤백 함수' },
+                { name: 'check_setup_complete', description: '설정 완료 확인 함수' }
+            ];
+
+            let functionsOk = 0;
+
+            for (const func of functionsToTest) {
+                try {
+                    const funcResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/${func.name}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': this.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                        },
+                        body: func.name === 'secure_batch_insert' ? 
+                            JSON.stringify({ batch_type: 'test', batch_data: [], input_migration_id: 'test' }) :
+                            func.name === 'emergency_rollback' ?
+                            JSON.stringify({ input_migration_id: 'test' }) :
+                            JSON.stringify({})
+                    });
+
+                    if (funcResponse.ok || funcResponse.status === 400) { // 400은 잘못된 매개변수이지만 함수는 존재
+                        functionsOk++;
+                        console.log(`✅ ${func.description}: 존재함`);
+                    } else if (funcResponse.status === 404) {
+                        setupErrors.push(`${func.description}(${func.name})가 존재하지 않습니다`);
+                    } else {
+                        setupErrors.push(`${func.description} 테스트 실패: ${funcResponse.status}`);
+                    }
+                } catch (error) {
+                    setupErrors.push(`${func.description} 확인 중 오류: ${error.message}`);
+                }
+            }
+
+            setupChecks.functions = functionsOk === functionsToTest.length;
+
+            // 4. 설정 완료 상태 종합 확인 (함수가 있으면)
+            if (setupChecks.functions) {
+                try {
+                    console.log('🔍 전체 설정 상태 확인 중...');
+                    
+                    const setupResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/check_setup_complete`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': this.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${this.SUPABASE_ANON_KEY}`
+                        },
+                        body: JSON.stringify({})
+                    });
+
+                    if (setupResponse.ok) {
+                        const setupResults = await setupResponse.json();
+                        console.log('📋 설정 완료 상태:', setupResults);
+
+                        // 결과 분석
+                        let allComponentsOk = true;
+                        setupResults.forEach(result => {
+                            if (result.status !== 'ok') {
+                                allComponentsOk = false;
+                                setupErrors.push(`${result.component}: ${result.details}`);
+                            }
+                        });
+
+                        if (allComponentsOk) {
+                            setupChecks.extensions = true;
+                            setupChecks.permissions = true;
+                            console.log('✅ 전체 설정: 완료됨');
+                        }
+                    } else {
+                        setupErrors.push('설정 완료 확인 실패');
+                    }
+                } catch (error) {
+                    setupErrors.push(`설정 상태 확인 오류: ${error.message}`);
+                }
+            }
+
+            // 5. 결과 종합 및 에러 메시지 생성
+            const totalChecks = Object.keys(setupChecks).length;
+            const passedChecks = Object.values(setupChecks).filter(Boolean).length;
+
+            if (passedChecks === totalChecks) {
+                console.log('🎉 Supabase 설정 완료 - 모든 검사 통과');
+                return { success: true, setup: setupChecks };
+            } else {
+                // 구체적인 설정 가이드 제공
+                const setupGuide = this.generateSetupGuide(setupChecks, setupErrors);
+                throw new Error(`Supabase 설정 미완료 (${passedChecks}/${totalChecks}): ${setupGuide}`);
+            }
+
+        } catch (error) {
+            // 네트워크 에러인지 설정 에러인지 구분
+            if (error.message.includes('fetch')) {
+                throw new Error(`Supabase 연결 실패: ${error.message}`);
+            } else {
+                throw error; // 설정 관련 에러는 그대로 전달
+            }
+        }
+    }
+
+    // 설정 가이드 생성
+    generateSetupGuide(setupChecks, setupErrors) {
+        let guide = '\n\n🛠️ Supabase 설정이 필요합니다:\n\n';
+
+        if (!setupChecks.connection) {
+            guide += '❌ 1. Supabase 연결 확인\n';
+            guide += '   - Supabase 프로젝트 URL과 API 키를 확인하세요\n';
+            guide += '   - 네트워크 연결을 확인하세요\n\n';
+        } else {
+            guide += '✅ 1. Supabase 연결: 정상\n\n';
         }
 
-        return await response.json();
+        if (!setupChecks.tables || !setupChecks.functions || !setupChecks.extensions) {
+            guide += '❌ 2. 데이터베이스 설정 미완료\n';
+            guide += '   📁 다음 파일을 Supabase SQL Editor에서 실행하세요:\n';
+            guide += '   → db/setup-complete.sql\n\n';
+            guide += '   📋 실행 방법:\n';
+            guide += '   1. Supabase 대시보드 → SQL Editor 이동\n';
+            guide += '   2. setup-complete.sql 파일 내용 복사\n';
+            guide += '   3. 쿼리 실행 (Run) 클릭\n';
+            guide += '   4. "Supabase 설정이 완료되었습니다!" 메시지 확인\n\n';
+        } else {
+            guide += '✅ 2. 데이터베이스 설정: 완료\n\n';
+        }
+
+        if (setupErrors.length > 0) {
+            guide += '🔍 상세 오류:\n';
+            setupErrors.forEach((error, index) => {
+                guide += `   ${index + 1}. ${error}\n`;
+            });
+            guide += '\n';
+        }
+
+        guide += '💡 설정 완료 후 페이지를 새로고침하세요.';
+
+        return guide;
+    }
+
+    // 사용자 친화적 에러 메시지 생성
+    createUserFriendlyError(error) {
+        const message = error.message.toLowerCase();
+        let guide = '\n\n🚨 동기화 문제가 발생했습니다:\n\n';
+
+        // 1. 연결 관련 오류
+        if (message.includes('fetch') || message.includes('network') || message.includes('연결')) {
+            guide += '🌐 **네트워크 연결 문제**\n';
+            guide += '   ✅ 해결 방법:\n';
+            guide += '   • 인터넷 연결 상태 확인\n';
+            guide += '   • Supabase 서비스 상태 확인 (https://status.supabase.com)\n';
+            guide += '   • 방화벽/프록시 설정 확인\n';
+            guide += '   • 잠시 후 다시 시도\n\n';
+
+        // 2. 인증 관련 오류  
+        } else if (message.includes('401') || message.includes('403') || message.includes('unauthorized') || message.includes('forbidden')) {
+            guide += '🔐 **인증 오류**\n';
+            guide += '   ✅ 해결 방법:\n';
+            guide += '   • data-manager.js의 SUPABASE_URL과 SUPABASE_ANON_KEY 확인\n';
+            guide += '   • Supabase 대시보드 → Settings → API에서 올바른 키 복사\n';
+            guide += '   • 프로젝트 URL 형식 확인 (https://xxxxx.supabase.co)\n';
+            guide += '   • 페이지 새로고침 후 재시도\n\n';
+
+        // 3. RPC 함수 관련 오류
+        } else if (message.includes('404') || message.includes('function') || message.includes('secure_batch_insert')) {
+            guide += '⚙️ **데이터베이스 설정 누락**\n';
+            guide += '   ✅ 해결 방법:\n';
+            guide += '   • SETUP-GUIDE.md 파일 참조\n';
+            guide += '   • db/setup-complete.sql 스크립트 실행 필요\n';
+            guide += '   • Supabase SQL Editor에서 전체 스크립트 실행\n';
+            guide += '   • "Supabase 설정이 완료되었습니다!" 메시지 확인 후 새로고침\n\n';
+
+        // 4. 데이터 변환 오류
+        } else if (message.includes('wkt') || message.includes('geometry') || message.includes('coordinates')) {
+            guide += '📍 **좌표 데이터 오류**\n';
+            guide += '   ✅ 해결 방법:\n';
+            guide += '   • 필지 좌표 데이터 확인 필요\n';
+            guide += '   • 손상된 필지 삭제 후 다시 추가\n';
+            guide += '   • localStorage 데이터 초기화 고려\n';
+            guide += '   • 페이지 새로고침 후 재시도\n\n';
+
+        // 5. 용량 관련 오류
+        } else if (message.includes('quota') || message.includes('limit') || message.includes('size')) {
+            guide += '💾 **용량 제한 문제**\n';
+            guide += '   ✅ 해결 방법:\n';
+            guide += '   • Supabase 프로젝트 사용량 확인 (대시보드 → Settings → Usage)\n';
+            guide += '   • 불필요한 데이터 정리\n';
+            guide += '   • 배치 크기 자동 조정 대기\n';
+            guide += '   • 필요시 Supabase 유료 플랜 고려\n\n';
+
+        // 6. 일반적인 저장 오류
+        } else if (message.includes('저장') || message.includes('insert') || message.includes('batch')) {
+            guide += '💿 **데이터 저장 오류**\n';
+            guide += '   ✅ 해결 방법:\n';
+            guide += '   • 잠시 후 다시 시도 (자동 재시도 진행 중)\n';
+            guide += '   • Supabase 대시보드에서 테이블 상태 확인\n';
+            guide += '   • 데이터 무결성 검사 실행\n';
+            guide += '   • 문제 지속시 emergency_rollback 함수 사용 고려\n\n';
+
+        // 7. 기타 오류
+        } else {
+            guide += '❓ **일반적인 동기화 오류**\n';
+            guide += '   ✅ 해결 방법:\n';
+            guide += '   • 브라우저 콘솔에서 상세 오류 확인\n';
+            guide += '   • Supabase 대시보드 → Logs에서 서버 로그 확인\n';
+            guide += '   • 페이지 새로고침 후 재시도\n';
+            guide += '   • 문제 지속시 SETUP-GUIDE.md 참조\n\n';
+        }
+
+        // 공통 추가 정보
+        guide += '🔍 **추가 진단 정보**:\n';
+        guide += `   • 오류 발생 시간: ${new Date().toLocaleString()}\n`;
+        guide += `   • 현재 동기화 상태: ${this.syncStatus}\n`;
+        guide += `   • 회로 차단기 상태: ${this.circuitBreaker.isOpen ? '활성화됨 (일시 중단)' : '정상'}\n`;
+        guide += `   • 원본 오류 메시지: ${error.message}\n\n`;
+
+        guide += '📖 **도움말**: SETUP-GUIDE.md 파일에서 전체 설정 가이드를 확인하세요.';
+
+        return guide;
     }
 
     // 동기화 상태 업데이트
@@ -285,6 +544,22 @@ class DataManager {
         } catch (error) {
             console.error('❌ 클라우드 저장 실패:', error);
             this.updateSyncStatus('error');
+            
+            // 사용자 친화적 에러 메시지 생성
+            const userFriendlyError = this.createUserFriendlyError(error);
+            console.error('🔍 문제 해결 가이드:', userFriendlyError);
+            
+            // UI에 알림 표시 (있으면)
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('syncError', {
+                    detail: { 
+                        originalError: error.message,
+                        userGuide: userFriendlyError,
+                        timestamp: new Date().toISOString()
+                    }
+                }));
+            }
+            
             return false;
         }
     }

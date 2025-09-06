@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동기화 개선사항 테스트</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .test-section.success {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        .test-section.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+        .test-section.warning {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 8px 8px 8px 0;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            margin-top: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online { background: #10b981; }
+        .status-offline { background: #ef4444; }
+        .status-syncing { background: #f59e0b; animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        h1, h2 {
+            color: #1f2937;
+        }
+        .info-box {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 동기화 개선사항 테스트</h1>
+        <p>개선된 Supabase 연결 테스트 및 에러 처리 시스템을 검증합니다.</p>
+        
+        <div class="info-box">
+            <strong>📋 테스트 목표:</strong>
+            <ul>
+                <li>향상된 연결 테스트 로직 검증</li>
+                <li>사용자 친화적 에러 메시지 확인</li>
+                <li>설정 가이드 접근성 테스트</li>
+                <li>실시간 동기화 상태 모니터링</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section" id="connectionTest">
+            <h2>🔍 1. 연결 테스트 개선 검증</h2>
+            <p>새로운 종합적인 Supabase 설정 검증 시스템을 테스트합니다.</p>
+            
+            <button onclick="testConnection()">연결 테스트 실행</button>
+            <button onclick="testWithBadCredentials()">잘못된 인증 정보 테스트</button>
+            
+            <div class="result" id="connectionResult"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section" id="errorHandlingTest">
+            <h2>🚨 2. 에러 메시지 개선 검증</h2>
+            <p>다양한 에러 시나리오에서 사용자 친화적 메시지를 확인합니다.</p>
+            
+            <button onclick="simulateNetworkError()">네트워크 에러 시뮬레이션</button>
+            <button onclick="simulateAuthError()">인증 에러 시뮬레이션</button>
+            <button onclick="simulateSetupError()">설정 누락 에러 시뮬레이션</button>
+            
+            <div class="result" id="errorResult"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section" id="syncStatusTest">
+            <h2>📊 3. 동기화 상태 모니터링</h2>
+            <p>실시간 동기화 상태 및 이벤트 시스템을 확인합니다.</p>
+            
+            <div>
+                <strong>현재 상태:</strong> 
+                <span class="status-indicator" id="statusIndicator"></span>
+                <span id="statusText">확인 중...</span>
+            </div>
+            
+            <button onclick="initDataManager()">DataManager 초기화</button>
+            <button onclick="checkSyncStatus()">동기화 상태 확인</button>
+            <button onclick="runDiagnostics()">시스템 진단 실행</button>
+            
+            <div class="result" id="statusResult"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="test-section" id="setupGuideTest">
+            <h2>📖 4. 설정 가이드 접근성</h2>
+            <p>생성된 설정 가이드의 접근성과 유용성을 확인합니다.</p>
+            
+            <button onclick="showSetupGuide()">설정 가이드 표시</button>
+            <button onclick="validateGuideContent()">가이드 내용 검증</button>
+            
+            <div class="result" id="guideResult"></div>
+        </div>
+    </div>
+
+    <!-- DataManager 로드 -->
+    <script src="/js/data-manager.js"></script>
+
+    <script>
+        let testDataManager = null;
+
+        // 동기화 상태 이벤트 리스너
+        window.addEventListener('syncStatusChanged', (event) => {
+            updateStatusDisplay(event.detail.status);
+            logResult('statusResult', `🔄 동기화 상태 변경: ${event.detail.prevStatus} → ${event.detail.status}`);
+        });
+
+        window.addEventListener('syncError', (event) => {
+            logResult('errorResult', '🚨 동기화 에러 이벤트 감지:\n' + event.detail.userGuide);
+        });
+
+        // 상태 표시 업데이트
+        function updateStatusDisplay(status) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            
+            indicator.className = 'status-indicator';
+            switch(status) {
+                case 'synced':
+                    indicator.classList.add('status-online');
+                    text.textContent = '동기화 완료';
+                    break;
+                case 'syncing':
+                    indicator.classList.add('status-syncing');
+                    text.textContent = '동기화 중...';
+                    break;
+                case 'offline':
+                    indicator.classList.add('status-offline');
+                    text.textContent = '오프라인';
+                    break;
+                case 'error':
+                    indicator.classList.add('status-offline');
+                    text.textContent = '에러 발생';
+                    break;
+                default:
+                    text.textContent = status;
+            }
+        }
+
+        // 결과 로깅
+        function logResult(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        // 1. 연결 테스트
+        async function testConnection() {
+            logResult('connectionResult', '🔍 연결 테스트 시작...');
+            
+            try {
+                if (!testDataManager) {
+                    testDataManager = new DataManager();
+                }
+                
+                const result = await testDataManager.testSupabaseConnection();
+                logResult('connectionResult', '✅ 연결 테스트 성공:\n' + JSON.stringify(result, null, 2));
+                
+                document.getElementById('connectionTest').className = 'test-section success';
+            } catch (error) {
+                logResult('connectionResult', '❌ 연결 테스트 실패:\n' + error.message);
+                document.getElementById('connectionTest').className = 'test-section error';
+            }
+        }
+
+        async function testWithBadCredentials() {
+            logResult('connectionResult', '🔍 잘못된 인증 정보로 테스트...');
+            
+            // 임시로 잘못된 DataManager 생성
+            const badDataManager = new DataManager();
+            badDataManager.SUPABASE_URL = 'https://invalid-url.supabase.co';
+            badDataManager.SUPABASE_ANON_KEY = 'invalid-key';
+            
+            try {
+                await badDataManager.testSupabaseConnection();
+                logResult('connectionResult', '❓ 예상과 다른 결과 - 실패해야 했는데 성공함');
+            } catch (error) {
+                logResult('connectionResult', '✅ 예상된 실패:\n' + error.message);
+            }
+        }
+
+        // 2. 에러 처리 테스트
+        function simulateNetworkError() {
+            logResult('errorResult', '🌐 네트워크 에러 시뮬레이션...');
+            
+            const networkError = new Error('fetch failed');
+            if (testDataManager) {
+                const userGuide = testDataManager.createUserFriendlyError(networkError);
+                logResult('errorResult', userGuide);
+            }
+        }
+
+        function simulateAuthError() {
+            logResult('errorResult', '🔐 인증 에러 시뮬레이션...');
+            
+            const authError = new Error('401 Unauthorized');
+            if (testDataManager) {
+                const userGuide = testDataManager.createUserFriendlyError(authError);
+                logResult('errorResult', userGuide);
+            }
+        }
+
+        function simulateSetupError() {
+            logResult('errorResult', '⚙️ 설정 누락 에러 시뮬레이션...');
+            
+            const setupError = new Error('function secure_batch_insert does not exist');
+            if (testDataManager) {
+                const userGuide = testDataManager.createUserFriendlyError(setupError);
+                logResult('errorResult', userGuide);
+            }
+        }
+
+        // 3. 동기화 상태 테스트
+        function initDataManager() {
+            logResult('statusResult', '🚀 DataManager 초기화 중...');
+            
+            if (window.dataManager) {
+                testDataManager = window.dataManager;
+                updateStatusDisplay(testDataManager.syncStatus);
+                logResult('statusResult', '✅ 기존 DataManager 인스턴스 사용');
+            } else {
+                testDataManager = new DataManager();
+                logResult('statusResult', '✅ 새 DataManager 인스턴스 생성');
+            }
+        }
+
+        function checkSyncStatus() {
+            if (!testDataManager) {
+                logResult('statusResult', '❌ DataManager가 초기화되지 않음');
+                return;
+            }
+            
+            const stats = testDataManager.getStats();
+            logResult('statusResult', '📊 동기화 통계:\n' + JSON.stringify(stats, null, 2));
+        }
+
+        async function runDiagnostics() {
+            if (!testDataManager) {
+                logResult('statusResult', '❌ DataManager가 초기화되지 않음');
+                return;
+            }
+            
+            logResult('statusResult', '🔍 시스템 진단 실행 중...');
+            
+            try {
+                const diagnostics = await testDataManager.runDiagnostics();
+                logResult('statusResult', '🎯 진단 결과:\n' + JSON.stringify(diagnostics, null, 2));
+            } catch (error) {
+                logResult('statusResult', '❌ 진단 실행 실패: ' + error.message);
+            }
+        }
+
+        // 4. 설정 가이드 테스트
+        function showSetupGuide() {
+            logResult('guideResult', '📖 설정 가이드 로딩 중...');
+            
+            fetch('/SETUP-GUIDE.md')
+                .then(response => response.text())
+                .then(content => {
+                    logResult('guideResult', '✅ 설정 가이드 로드 완료 (길이: ' + content.length + ' 문자)\n\n--- 가이드 미리보기 ---\n' + content.substring(0, 500) + '...');
+                })
+                .catch(error => {
+                    logResult('guideResult', '❌ 설정 가이드 로드 실패: ' + error.message);
+                });
+        }
+
+        function validateGuideContent() {
+            logResult('guideResult', '🔍 가이드 내용 검증 중...');
+            
+            fetch('/SETUP-GUIDE.md')
+                .then(response => response.text())
+                .then(content => {
+                    const requiredSections = [
+                        'Supabase 프로젝트 생성',
+                        '데이터베이스 설정',
+                        'API 키 설정',
+                        '문제 해결',
+                        'setup-complete.sql'
+                    ];
+                    
+                    const validationResults = [];
+                    requiredSections.forEach(section => {
+                        if (content.includes(section)) {
+                            validationResults.push(`✅ ${section} 섹션 존재`);
+                        } else {
+                            validationResults.push(`❌ ${section} 섹션 누락`);
+                        }
+                    });
+                    
+                    logResult('guideResult', '📋 가이드 검증 결과:\n' + validationResults.join('\n'));
+                })
+                .catch(error => {
+                    logResult('guideResult', '❌ 가이드 검증 실패: ' + error.message);
+                });
+        }
+
+        // 페이지 로드시 초기 상태 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            logResult('connectionResult', '테스트 준비 완료. 버튼을 클릭하여 테스트를 시작하세요.');
+            logResult('errorResult', '에러 처리 테스트 준비 완료.');
+            logResult('statusResult', '동기화 상태 모니터링 준비 완료.');
+            logResult('guideResult', '설정 가이드 테스트 준비 완료.');
+            
+            // 기존 DataManager가 있으면 자동 초기화
+            setTimeout(() => {
+                if (window.dataManager) {
+                    testDataManager = window.dataManager;
+                    updateStatusDisplay(testDataManager.syncStatus);
+                    logResult('statusResult', '🔄 기존 DataManager 자동 감지됨');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

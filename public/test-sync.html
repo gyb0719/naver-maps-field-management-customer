@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 동기화 시스템 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.danger {
+            background: #f44336;
+        }
+        button.danger:hover {
+            background: #da190b;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .stat-card h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        .sync-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .sync-indicator.offline {
+            background: #6c757d;
+        }
+        .sync-indicator.syncing {
+            background: #ffc107;
+            animation: pulse 1s infinite;
+        }
+        .sync-indicator.synced {
+            background: #28a745;
+        }
+        .sync-indicator.error {
+            background: #dc3545;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 실시간 동기화 시스템 테스트</h1>
+        
+        <!-- 동기화 상태 표시 -->
+        <div class="test-section">
+            <h3>🔌 동기화 상태</h3>
+            <div id="syncStatus" class="status info">
+                <span class="sync-indicator offline" id="syncIndicator"></span>
+                <span id="syncText">초기화 중...</span>
+            </div>
+            <button onclick="refreshStatus()">상태 새로고침</button>
+            <button onclick="runDiagnostics()">진단 실행</button>
+        </div>
+
+        <!-- 테스트 데이터 생성 -->
+        <div class="test-section">
+            <h3>📝 테스트 데이터 생성</h3>
+            <button onclick="generateTestParcels(1)">필지 1개 생성</button>
+            <button onclick="generateTestParcels(5)">필지 5개 생성</button>
+            <button onclick="generateTestParcels(10)">필지 10개 생성</button>
+            <button onclick="clearTestData()" class="danger">테스트 데이터 삭제</button>
+        </div>
+
+        <!-- 수동 동기화 테스트 -->
+        <div class="test-section">
+            <h3>⚡ 동기화 테스트</h3>
+            <button onclick="testAutoSync()">자동 동기화 테스트</button>
+            <button onclick="testManualSync()">수동 동기화</button>
+            <button onclick="testBatchSync()">배치 동기화 (큰 데이터)</button>
+            <button onclick="testGoogleBackup()">Google Sheets 백업</button>
+        </div>
+
+        <!-- 에러 시뮬레이션 -->
+        <div class="test-section">
+            <h3>🚨 에러 처리 테스트</h3>
+            <button onclick="simulateNetworkError()">네트워크 에러</button>
+            <button onclick="simulateDataCorruption()">데이터 손상</button>
+            <button onclick="testCircuitBreaker()">회로 차단기</button>
+            <button onclick="recoverFromError()">에러 복구</button>
+        </div>
+
+        <!-- 실시간 통계 -->
+        <div class="test-section">
+            <h3>📊 실시간 통계</h3>
+            <div class="stats-grid" id="statsGrid">
+                <!-- 통계 카드들이 여기에 생성됩니다 -->
+            </div>
+            <button onclick="updateStats()">통계 업데이트</button>
+        </div>
+
+        <!-- 로그 출력 -->
+        <div class="test-section">
+            <h3>📋 실시간 로그</h3>
+            <div id="logOutput" class="log"></div>
+            <button onclick="clearLog()">로그 지우기</button>
+            <button onclick="exportLog()">로그 내보내기</button>
+        </div>
+    </div>
+
+    <!-- DataManager 로드 -->
+    <script src="/js/data-manager.js"></script>
+
+    <script>
+        // 로그 시스템
+        const log = (message, type = 'info') => {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('logOutput');
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            // 콘솔에도 출력
+            console.log(logEntry.trim());
+        };
+
+        // DataManager 초기화 대기
+        const waitForDataManager = () => {
+            return new Promise((resolve) => {
+                if (window.dataManager) {
+                    resolve(window.dataManager);
+                } else {
+                    setTimeout(() => waitForDataManager().then(resolve), 100);
+                }
+            });
+        };
+
+        // 동기화 상태 업데이트
+        const updateSyncStatus = (status, message) => {
+            const indicator = document.getElementById('syncIndicator');
+            const text = document.getElementById('syncText');
+            const statusDiv = document.getElementById('syncStatus');
+            
+            indicator.className = `sync-indicator ${status}`;
+            text.textContent = message;
+            
+            // 상태에 따른 스타일 변경
+            statusDiv.className = 'status ' + (
+                status === 'error' ? 'error' : 
+                status === 'synced' ? 'success' : 'info'
+            );
+        };
+
+        // 상태 새로고침
+        const refreshStatus = async () => {
+            const dm = await waitForDataManager();
+            updateSyncStatus(dm.syncStatus, `상태: ${dm.syncStatus}, 마지막 동기화: ${dm.lastSyncTime || '없음'}`);
+            log(`동기화 상태 새로고침: ${dm.syncStatus}`);
+        };
+
+        // 진단 실행
+        const runDiagnostics = async () => {
+            log('시스템 진단 시작...');
+            try {
+                const dm = await waitForDataManager();
+                const diagnostics = await dm.runDiagnostics();
+                
+                log(`진단 결과: ${diagnostics.overall} (${diagnostics.score})`);
+                log(`localStorage: ${diagnostics.tests.localStorage ? '✅' : '❌'}`);
+                log(`Supabase 연결: ${diagnostics.tests.supabaseConnection ? '✅' : '❌'}`);
+                log(`메모리 캐시: ${diagnostics.tests.memoryCache ? '✅' : '❌'}`);
+                
+            } catch (error) {
+                log(`진단 실패: ${error.message}`, 'error');
+            }
+        };
+
+        // 테스트 데이터 생성
+        const generateTestParcels = async (count) => {
+            log(`${count}개 테스트 필지 생성 중...`);
+            
+            const testParcels = [];
+            const colors = ['#FF0000', '#FFA500', '#FFFF00', '#90EE90', '#0000FF'];
+            
+            for (let i = 0; i < count; i++) {
+                const parcel = {
+                    id: `test_${Date.now()}_${i}`,
+                    pnu: `test_pnu_${Date.now()}_${i}`,
+                    parcelNumber: `테스트지번 ${Date.now()}-${i}`,
+                    ownerName: `테스트소유자${i + 1}`,
+                    ownerAddress: `테스트주소 ${i + 1}번지`,
+                    ownerContact: `010-1234-${String(i).padStart(4, '0')}`,
+                    memo: `테스트 메모 ${i + 1}`,
+                    color: colors[i % colors.length],
+                    coordinates: [
+                        { lat: 37.5665 + (Math.random() - 0.5) * 0.01, lng: 126.9780 + (Math.random() - 0.5) * 0.01 },
+                        { lat: 37.5665 + (Math.random() - 0.5) * 0.01, lng: 126.9790 + (Math.random() - 0.5) * 0.01 },
+                        { lat: 37.5675 + (Math.random() - 0.5) * 0.01, lng: 126.9790 + (Math.random() - 0.5) * 0.01 },
+                        { lat: 37.5675 + (Math.random() - 0.5) * 0.01, lng: 126.9780 + (Math.random() - 0.5) * 0.01 }
+                    ],
+                    area: Math.round(Math.random() * 1000) + 100,
+                    createdAt: new Date().toISOString()
+                };
+                testParcels.push(parcel);
+            }
+            
+            try {
+                const dm = await waitForDataManager();
+                const result = await dm.save(testParcels);
+                
+                log(`${count}개 테스트 필지 생성 완료`);
+                log(`로컬 저장: ${result.local ? '✅' : '❌'}`);
+                log(`클라우드 동기화: ${result.cloud ? '✅' : '대기중'}`);
+                
+                if (result.errors && result.errors.length > 0) {
+                    log(`에러: ${result.errors.join(', ')}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`테스트 데이터 생성 실패: ${error.message}`, 'error');
+            }
+        };
+
+        // 테스트 데이터 삭제
+        const clearTestData = async () => {
+            if (!confirm('모든 테스트 데이터를 삭제하시겠습니까?')) return;
+            
+            log('테스트 데이터 삭제 중...');
+            try {
+                const dm = await waitForDataManager();
+                await dm.save([]);
+                log('테스트 데이터 삭제 완료');
+            } catch (error) {
+                log(`데이터 삭제 실패: ${error.message}`, 'error');
+            }
+        };
+
+        // 자동 동기화 테스트
+        const testAutoSync = async () => {
+            log('자동 동기화 테스트 시작...');
+            
+            // 작은 변경사항 생성
+            await generateTestParcels(2);
+            log('2초 후 자동 동기화 실행 예정 (디바운싱)');
+            
+            // 3초 후 결과 확인
+            setTimeout(async () => {
+                const dm = await waitForDataManager();
+                const stats = dm.getStats();
+                log(`자동 동기화 결과 - 상태: ${stats.syncStatus}, 평균 시간: ${stats.performance.avgSyncTime}ms`);
+            }, 3000);
+        };
+
+        // 수동 동기화 테스트
+        const testManualSync = async () => {
+            log('수동 동기화 테스트 시작...');
+            try {
+                const dm = await waitForDataManager();
+                const result = await dm.sync();
+                log(`수동 동기화 완료: ${result ? '성공' : '실패'}`);
+            } catch (error) {
+                log(`수동 동기화 실패: ${error.message}`, 'error');
+            }
+        };
+
+        // 배치 동기화 테스트 (큰 데이터)
+        const testBatchSync = async () => {
+            log('대용량 배치 동기화 테스트 시작...');
+            await generateTestParcels(25); // 25개 필지로 배치 테스트
+        };
+
+        // Google Sheets 백업 테스트
+        const testGoogleBackup = async () => {
+            log('Google Sheets 백업 테스트 시작...');
+            try {
+                const dm = await waitForDataManager();
+                
+                if (dm.getGoogleBackupStatus().isAvailable) {
+                    const result = await dm.manualGoogleBackup();
+                    log(`Google Sheets 백업 완료: ${result.message}`);
+                } else {
+                    log('Google Sheets API를 사용할 수 없습니다', 'error');
+                }
+            } catch (error) {
+                log(`Google Sheets 백업 실패: ${error.message}`, 'error');
+            }
+        };
+
+        // 네트워크 에러 시뮬레이션
+        const simulateNetworkError = () => {
+            log('네트워크 에러 시뮬레이션...');
+            // 실제로는 네트워크를 차단할 수 없으므로 로그만 출력
+            log('실제 테스트에서는 네트워크 연결을 끊어보세요');
+        };
+
+        // 데이터 손상 시뮬레이션
+        const simulateDataCorruption = async () => {
+            log('데이터 손상 시뮬레이션...');
+            
+            // 잘못된 데이터 생성 시도
+            const corruptedParcel = {
+                pnu: null, // 필수 필드 누락
+                coordinates: "invalid_coordinates", // 잘못된 형식
+                area: "not_a_number" // 잘못된 타입
+            };
+            
+            try {
+                const dm = await waitForDataManager();
+                await dm.save([corruptedParcel]);
+            } catch (error) {
+                log(`예상된 데이터 손상 에러: ${error.message}`, 'error');
+                log('에러 처리 시스템이 정상 작동합니다', 'info');
+            }
+        };
+
+        // 회로 차단기 테스트
+        const testCircuitBreaker = async () => {
+            log('회로 차단기 테스트...');
+            const dm = await waitForDataManager();
+            
+            log(`현재 회로 차단기 상태: ${dm.circuitBreaker.isOpen ? '차단됨' : '정상'}`);
+            log(`실패 횟수: ${dm.circuitBreaker.failures}/${dm.circuitBreaker.threshold}`);
+        };
+
+        // 에러 복구 테스트
+        const recoverFromError = async () => {
+            log('에러 복구 테스트...');
+            try {
+                const dm = await waitForDataManager();
+                const result = await dm.recoverFromErrors();
+                log(`에러 복구 ${result ? '성공' : '실패'}`);
+            } catch (error) {
+                log(`에러 복구 실패: ${error.message}`, 'error');
+            }
+        };
+
+        // 통계 업데이트
+        const updateStats = async () => {
+            try {
+                const dm = await waitForDataManager();
+                const stats = dm.getStats();
+                
+                const statsGrid = document.getElementById('statsGrid');
+                statsGrid.innerHTML = `
+                    <div class="stat-card">
+                        <h4>📊 기본 정보</h4>
+                        <p>총 필지: ${stats.totalParcels}개</p>
+                        <p>메모리 사용량: ${(stats.memoryUsage / 1024).toFixed(1)}KB</p>
+                        <p>데이터 버전: ${stats.dataVersion || '없음'}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>⚡ 성능</h4>
+                        <p>평균 동기화 시간: ${stats.performance.avgSyncTime}ms</p>
+                        <p>총 동기화 횟수: ${stats.performance.totalSyncs}회</p>
+                        <p>캐시 상태: ${stats.performance.cacheHitRate}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>🚨 에러</h4>
+                        <p>총 에러: ${stats.errors.total}개</p>
+                        <p>네트워크 에러: ${stats.errors.breakdown.network || 0}개</p>
+                        <p>재시도 횟수: ${stats.errors.breakdown.retry || 0}회</p>
+                        <p>회로 차단기: ${stats.errors.circuitBreakerStatus}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>🔧 최적화</h4>
+                        <p>배치 크기 캐시: ${stats.optimization.dynamicBatchSizes}개</p>
+                        <p>자동 동기화: ${stats.optimization.autoSyncEnabled ? '활성' : '비활성'}</p>
+                        <p>마지막 Google 백업: ${stats.optimization.lastGoogleBackup}</p>
+                    </div>
+                `;
+                
+                log('통계 업데이트 완료');
+                
+            } catch (error) {
+                log(`통계 업데이트 실패: ${error.message}`, 'error');
+            }
+        };
+
+        // 로그 관련 함수들
+        const clearLog = () => {
+            document.getElementById('logOutput').textContent = '';
+        };
+
+        const exportLog = () => {
+            const logContent = document.getElementById('logOutput').textContent;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sync-test-log-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        // DataManager 이벤트 리스너 설정
+        const setupEventListeners = async () => {
+            const dm = await waitForDataManager();
+            
+            // 동기화 상태 변경 감지
+            dm.onSyncStatusChange((status, prevStatus) => {
+                const statusMessages = {
+                    'offline': '오프라인 - Supabase 연결 없음',
+                    'syncing': '동기화 중...',
+                    'synced': '동기화 완료',
+                    'error': '동기화 에러 발생'
+                };
+                
+                updateSyncStatus(status, statusMessages[status] || status);
+                log(`동기화 상태 변경: ${prevStatus} → ${status}`);
+            });
+
+            // 초기 상태 업데이트
+            await refreshStatus();
+            await updateStats();
+        };
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            log('실시간 동기화 테스트 시스템 초기화 중...');
+            setupEventListeners();
+            
+            // 주기적 통계 업데이트 (10초마다)
+            setInterval(updateStats, 10000);
+        });
+    </script>
+</body>
+</html>

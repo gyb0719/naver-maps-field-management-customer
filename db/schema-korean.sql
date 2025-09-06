@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS parcels (
     -- 메타데이터
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
+    migration_id VARCHAR(100), -- 마이그레이션 추적 ID
     
     -- VWorld API 원본 데이터 (JSON)
     raw_data JSONB,
