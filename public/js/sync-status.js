@@ -30,14 +30,32 @@ class SyncStatusUI {
             return;
         }
 
-        // DataManager 상태 변경 이벤트 구독
-        if (window.dataManager) {
-            window.dataManager.onSyncStatusChange((status, prevStatus) => {
-                this.updateUI(status);
-            });
+        // DataManager 상태 변경 이벤트 구독 (안전한 참조)
+        if (window.dataManager && typeof window.dataManager.onSyncStatusChange === 'function') {
+            try {
+                window.dataManager.onSyncStatusChange((status, prevStatus) => {
+                    this.updateUI(status);
+                });
 
-            // 초기 상태 설정
-            this.updateUI(window.dataManager.syncStatus);
+                // 초기 상태 설정
+                this.updateUI(window.dataManager.syncStatus);
+                console.log('✅ DataManager와 SyncStatusUI 연결 성공');
+            } catch (error) {
+                console.warn('DataManager 연결 실패:', error);
+                this.updateUI('offline'); // 폴백 상태
+            }
+        } else {
+            console.warn('DataManager onSyncStatusChange 메소드 없음, 재시도 중...');
+            // DataManager 로드 대기 후 재시도
+            setTimeout(() => {
+                if (window.dataManager && typeof window.dataManager.onSyncStatusChange === 'function') {
+                    window.dataManager.onSyncStatusChange((status) => {
+                        this.updateUI(status);
+                    });
+                    this.updateUI(window.dataManager.syncStatus);
+                    console.log('✅ 지연된 DataManager 연결 성공');
+                }
+            }, 500);
         }
 
         // 수동 동기화 클릭 이벤트
@@ -59,11 +77,18 @@ class SyncStatusUI {
             'offline': '오프라인',
             'syncing': '동기화 중...',
             'synced': '동기화 완료',
-            'error': '동기화 실패'
+            'error': '동기화 실패',
+            'hidden': ''
         };
 
         if (this.textElement) {
             this.textElement.textContent = statusTexts[status] || '알 수 없음';
+            // hidden 상태일 때 전체 상태 표시 숨김
+            if (status === 'hidden') {
+                this.statusElement.style.display = 'none';
+            } else {
+                this.statusElement.style.display = '';
+            }
         }
 
         // 툴팁 업데이트
@@ -72,6 +97,7 @@ class SyncStatusUI {
                 'offline': '오프라인 모드 - 클릭하여 연결 재시도',
                 'syncing': '데이터 동기화 진행 중...',
                 'synced': `동기화 완료 - 마지막 동기화: ${this.formatTime(window.dataManager?.lastSyncTime)}`,
+                'hidden': '로컬 저장소 모드',
                 'error': '동기화 실패 - 클릭하여 재시도'
             };
 

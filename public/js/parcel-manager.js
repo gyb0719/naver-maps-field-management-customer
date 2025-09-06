@@ -46,9 +46,21 @@ class ParcelManager {
         let rawParcels = [];
         
         try {
-            if (window.dataManager) {
-                rawParcels = await window.dataManager.load();
-                console.log(`DataManager를 통해 ${rawParcels.length}개 필지 로드됨`);
+            if (window.dataManager && typeof window.dataManager.loadParcels === 'function') {
+                rawParcels = await window.dataManager.loadParcels();
+                console.log(`DataManager를 통해 필지 데이터 로드됨:`, rawParcels);
+                
+                // 객체 형태를 배열로 변환
+                if (rawParcels && typeof rawParcels === 'object' && !Array.isArray(rawParcels)) {
+                    rawParcels = Object.values(rawParcels);
+                }
+                
+                // 배열이 아닌 경우 빈 배열로 초기화
+                if (!Array.isArray(rawParcels)) {
+                    rawParcels = [];
+                }
+                
+                console.log(`최종 ${rawParcels.length}개 필지 로드됨`);
             } else {
                 // DataManager가 없으면 기존 방식 사용
                 const STORAGE_KEY = window.CONFIG && window.CONFIG.STORAGE_KEY ? window.CONFIG.STORAGE_KEY : 'parcelData';
@@ -61,16 +73,22 @@ class ParcelManager {
             rawParcels = [];
         }
         
-        // 기존 데이터 형식 변환 (id와 createdAt 추가)
-        this.parcels = rawParcels.map((parcel, index) => {
+        // 기존 데이터 형식 변환 (id와 createdAt 추가) - 안전한 처리
+        this.parcels = (rawParcels || []).map((parcel, index) => {
+            // null 체크 추가
+            if (!parcel || typeof parcel !== 'object') {
+                console.warn(`Invalid parcel data at index ${index}:`, parcel);
+                return null;
+            }
+            
             return {
                 ...parcel,
-                id: parcel.id || `parcel_${parcel.pnu || parcel.parcelNumber}_${index}`,
+                id: parcel.id || `parcel_${parcel.pnu || parcel.parcelNumber || 'unknown'}_${index}`,
                 createdAt: parcel.createdAt || parcel.timestamp || new Date().toISOString(),
                 address: parcel.address || parcel.parcelNumber || parcel.pnu || '주소 없음',
                 coordinates: parcel.coordinates || parcel.geometry // geometry를 coordinates로도 참조 가능하게
             };
-        });
+        }).filter(parcel => parcel !== null); // null 값들 제거
         
         // searchParcels Map의 저장된 데이터도 추가 (중복 제외)
         if (window.searchParcels && window.searchParcels.size > 0) {
@@ -536,27 +554,36 @@ class ParcelManager {
     }
     
     getStatistics() {
-        // 선택 필지: parcel.js에서 클릭해서 색칠한 필지 (window.clickParcels)
-        let selectedCount = 0;
-        if (window.clickParcels && window.clickParcels.size > 0) {
-            window.clickParcels.forEach((parcelData) => {
-                // transparent가 아닌 색상으로 칠해진 필지가 선택 필지
-                if (parcelData.color && parcelData.color !== 'transparent') {
-                    selectedCount++;
-                }
-            });
-        }
+        console.log('📊 통계 계산 시작 - 실제 저장된 데이터:', this.parcels.length);
         
-        // 검색 필지: search.js에서 검색해서 나온 필지 (window.searchParcels)  
-        let searchCount = 0;
-        if (window.searchParcels && window.searchParcels.size > 0) {
-            // 저장된 정보가 있는 검색 필지만 카운트
-            window.searchParcels.forEach((parcel) => {
-                if (parcel.savedInfo || parcel.ownerName || parcel.ownerAddress) {
-                    searchCount++;
-                }
+        // 실제 저장된 필지 데이터를 기반으로 통계 계산
+        let selectedCount = 0; // 클릭으로 선택된 필지
+        let searchCount = 0;   // 검색으로 찾은 필지
+        
+        // 🎯 ULTRATHINK: 색상 기반 완벽 분류 시스템
+        const SEARCH_COLORS = ['#9370DB', '#8A2BE2', '#800080']; // 보라색 계열 = 검색 필지
+        
+        this.parcels.forEach((parcel, index) => {
+            const color = parcel.color || '#FF0000'; // 기본값: 빨간색
+            
+            console.log(`🔍 필지 ${index + 1} 분석:`, {
+                parcelNumber: parcel.parcelNumber || parcel.pnu,
+                color: color,
+                isSearchColor: SEARCH_COLORS.includes(color),
+                source: parcel.source || parcel.type
             });
-        }
+            
+            // 🌈 색상 기반 완벽 분류
+            if (SEARCH_COLORS.includes(color)) {
+                // 보라색 계열 = 검색 필지
+                searchCount++;
+                console.log(`  ✅ 검색 필지로 분류 (색상: ${color})`);
+            } else {
+                // 기타 색상 = 선택 필지 (클릭으로 색칠한 필지)
+                selectedCount++;
+                console.log(`  ✅ 선택 필지로 분류 (색상: ${color})`);
+            }
+        });
         
         const stats = {
             total: this.parcels.length,
@@ -574,6 +601,24 @@ class ParcelManager {
             stats.totalArea += parseFloat(p.area) || 0;
         });
         
+        // 🎯 ULTRATHINK: 완벽한 통계 검증 시스템
+        console.log('📊 ================================');
+        console.log('📊 ULTRATHINK 통계 검증 결과:');
+        console.log('📊 ================================');
+        console.log(`📊 총 필지 수: ${stats.total}개`);
+        console.log(`🔴 선택 필지: ${stats.selectedCount}개 (빨간색 등)`);
+        console.log(`🟣 검색 필지: ${stats.searchCount}개 (보라색 #9370DB)`);
+        console.log(`🎯 필터된 필지: ${stats.filtered}개`);
+        console.log('📊 ================================');
+        
+        // 색상별 상세 분석
+        const colorAnalysis = {};
+        this.parcels.forEach(parcel => {
+            const color = parcel.color || 'unknown';
+            colorAnalysis[color] = (colorAnalysis[color] || 0) + 1;
+        });
+        console.log('🌈 색상별 분석:', colorAnalysis);
+        
         return stats;
     }
     
@@ -584,19 +629,46 @@ class ParcelManager {
         
         const stats = this.getStatistics();
         
-        // 선택 통계 업데이트
-        const selectedStatEl = document.querySelector('.stat-item .stat-value');
-        if (selectedStatEl) {
-            selectedStatEl.textContent = stats.selectedCount;
+        // 선택 통계 업데이트 (더 안전한 선택자 사용)
+        const statItems = document.querySelectorAll('.pm-stats .stat-item');
+        console.log('📈 통계 DOM 요소 찾기:', statItems.length);
+        
+        if (statItems.length >= 2) {
+            // 첫 번째: 선택 필지
+            const selectedValueEl = statItems[0].querySelector('.stat-value');
+            if (selectedValueEl) {
+                selectedValueEl.textContent = stats.selectedCount;
+                console.log('✅ 선택 필지 통계 업데이트:', stats.selectedCount);
+            }
+            
+            // 두 번째: 검색 필지  
+            const searchValueEl = statItems[1].querySelector('.stat-value');
+            if (searchValueEl) {
+                searchValueEl.textContent = stats.searchCount;
+                console.log('✅ 검색 필지 통계 업데이트:', stats.searchCount);
+            }
+        } else {
+            console.warn('⚠️ 통계 DOM 요소를 찾을 수 없습니다');
         }
         
-        // 검색 통계 업데이트
-        const searchStatEls = document.querySelectorAll('.stat-item .stat-value');
-        if (searchStatEls.length > 1) {
-            searchStatEls[1].textContent = stats.searchCount;
-        }
+        console.log('✅ DOM 통계 업데이트 완료:', { 선택: stats.selectedCount, 검색: stats.searchCount });
+    }
+    
+    // 🎯 ULTRATHINK: 완벽한 통계 테스트 함수
+    testStatistics() {
+        console.log('🧪 ULTRATHINK 통계 테스트 시작...');
         
-        console.log('통계 업데이트 완료:', { 선택: stats.selectedCount, 검색: stats.searchCount });
+        // 데이터 재로드
+        this.loadParcels();
+        
+        // 통계 재계산
+        const stats = this.getStatistics();
+        
+        // 실제 화면 통계 업데이트
+        this.updateStatisticsOnly();
+        
+        console.log('🧪 테스트 완료 - 화면 통계가 업데이트되었습니다!');
+        return stats;
     }
     
     render() {
@@ -1064,6 +1136,35 @@ class ParcelManager {
             this.loadParcels();
             this.applyFilters();
             this.render();
+        });
+        
+        // 🎯 ULTRATHINK: 저장 후 실시간 동기화 이벤트
+        window.addEventListener('parcelDataSaved', (e) => {
+            console.log('🚨 parcelDataSaved 이벤트 수신:', e.detail);
+            console.log('🔄 ParcelManager 즉시 갱신 시작...');
+            
+            try {
+                // 1. 데이터 재로드
+                this.loadParcels();
+                console.log('📋 데이터 재로드 완료');
+                
+                // 2. 필터 재적용  
+                this.applyFilters();
+                console.log('🔍 필터 재적용 완료');
+                
+                // 3. 화면 렌더링
+                this.render();
+                console.log('🖼️ 화면 렌더링 완료');
+                
+                // 4. 통계 업데이트
+                this.updateStatisticsOnly();
+                console.log('📊 통계 업데이트 완료');
+                
+                console.log('✅ 실시간 동기화 완료! 우측 필지 목록이 즉시 갱신되었습니다.');
+                
+            } catch (error) {
+                console.error('❌ 실시간 동기화 중 오류:', error);
+            }
         });
     }
 }

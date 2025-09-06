@@ -343,6 +343,15 @@ class ViewportRenderer {
 
     // 필지 추가
     addParcel(parcel) {
+        if (!parcel) {
+            console.warn('ViewportRenderer.addParcel: parcel이 null 또는 undefined입니다');
+            return;
+        }
+        
+        if (!this.allParcels) {
+            this.allParcels = [];
+        }
+        
         this.allParcels.push(parcel);
         
         // 현재 뷰포트에 있으면 즉시 렌더링

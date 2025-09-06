@@ -197,12 +197,22 @@ const GoogleAuth = {
             });
             
             if (!response.ok) {
+                // 401 오류인 경우 토큰 만료로 간주하고 조용히 처리
+                if (response.status === 401) {
+                    console.warn('Google API 토큰 만료 또는 권한 없음 - Calendar 기능 비활성화');
+                    return null; // 에러 던지지 않고 null 반환
+                }
                 throw new Error(`API 호출 실패: ${response.status}`);
             }
             
             return await response.json();
         } catch (error) {
-            console.error('Calendar API 호출 오류:', error);
+            // 401 오류는 경고로만 처리
+            if (error.message.includes('401')) {
+                console.warn('Calendar API 액세스 권한 없음 - 기능 비활성화');
+            } else {
+                console.error('Calendar API 호출 오류:', error);
+            }
             return null;
         }
     },

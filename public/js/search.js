@@ -136,6 +136,18 @@ function highlightParcel(parcelData) {
         // localStorage에 저장
         saveSearchResultsToStorage();
         
+        // ULTRATHINK: 실시간 ParcelManager 동기화
+        if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
+            window.parcelManager.loadParcels();
+            window.parcelManager.updateStatisticsOnly();
+            window.parcelManager.render();
+        }
+        
+        // 검색 결과 저장 이벤트 발생
+        window.dispatchEvent(new CustomEvent('parcelDataSaved', {
+            detail: { parcelNumber: displayText, syncResult: null, action: 'search_add' }
+        }));
+        
         // 왼쪽 폼에 지번 자동 입력
         const parcelNumberInput = document.getElementById('parcelNumber');
         if (parcelNumberInput) {
@@ -263,6 +275,18 @@ function clearSearchResults() {
             window.searchParcels.clear();
         }
         console.log('🧹 검색 결과 지도에서 제거 완료');
+        
+        // ULTRATHINK: 실시간 ParcelManager 동기화
+        if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
+            window.parcelManager.loadParcels();
+            window.parcelManager.updateStatisticsOnly();
+            window.parcelManager.render();
+        }
+        
+        // 검색 결과 정리 이벤트 발생
+        window.dispatchEvent(new CustomEvent('parcelDataSaved', {
+            detail: { parcelNumber: null, syncResult: null, action: 'search_clear_display' }
+        }));
     } catch (error) {
         console.error('💥 검색 결과 제거 실패:', error);
     }
@@ -273,6 +297,18 @@ function removeSearchResultsFromStorage() {
     try {
         localStorage.removeItem(SEARCH_STORAGE_KEY);
         console.log('🗑️ localStorage에서 검색 결과 삭제 완료');
+        
+        // ULTRATHINK: 실시간 ParcelManager 동기화
+        if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
+            window.parcelManager.loadParcels();
+            window.parcelManager.updateStatisticsOnly();
+            window.parcelManager.render();
+        }
+        
+        // localStorage 검색 결과 삭제 이벤트 발생
+        window.dispatchEvent(new CustomEvent('parcelDataSaved', {
+            detail: { parcelNumber: null, syncResult: null, action: 'search_storage_clear' }
+        }));
     } catch (error) {
         console.error('💥 검색 결과 localStorage 삭제 실패:', error);
     }
@@ -1008,6 +1044,18 @@ function clearAllSearchResults() {
     
     window.searchParcels.clear();
     console.log('모든 검색 결과 제거 완료');
+    
+    // ULTRATHINK: 실시간 ParcelManager 동기화
+    if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
+        window.parcelManager.loadParcels();
+        window.parcelManager.updateStatisticsOnly();
+        window.parcelManager.render();
+    }
+    
+    // 검색 결과 삭제 이벤트 발생
+    window.dispatchEvent(new CustomEvent('parcelDataSaved', {
+        detail: { parcelNumber: null, syncResult: null, action: 'search_clear' }
+    }));
 }
 
 // 전역 함수로 노출

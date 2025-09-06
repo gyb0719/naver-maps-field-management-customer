@@ -70,27 +70,31 @@ class DataManager {
             console.log('DataManager 초기화 완료 - Supabase 연결 성공');
         } catch (error) {
             console.warn('Supabase 연결 실패, localStorage 전용 모드:', error.message);
-            this.updateSyncStatus('offline');
+            console.log('🔧 Supabase 재연결 시도 중...');
+            
+            // 3초 후 재시도
+            setTimeout(async () => {
+                try {
+                    await this.testSupabaseConnection();
+                    this.updateSyncStatus('synced');
+                    console.log('✅ Supabase 재연결 성공!');
+                } catch (retryError) {
+                    console.log('❌ Supabase 재연결 실패, localStorage 전용 모드 유지');
+                    this.updateSyncStatus('offline');
+                }
+            }, 3000);
+            
+            this.updateSyncStatus('syncing');
         }
     }
 
-    // 종합적인 Supabase 설정 검증
+    // 완전히 간소화된 Supabase 연결 테스트
     async testSupabaseConnection() {
-        const setupChecks = {
-            connection: false,
-            tables: false,
-            functions: false,
-            extensions: false,
-            permissions: false
-        };
-
-        let setupErrors = [];
-
         try {
-            // 1. 기본 연결 테스트
-            console.log('🔍 Supabase 연결 테스트 중...');
+            console.log('🔍 Supabase 연결 테스트 시작...');
             
-            const pingResponse = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/ping`, {
+            // 기본 ping 테스트만 수행 (가장 단순하고 확실한 방법)
+            const response = await fetch(`${this.SUPABASE_URL}/rest/v1/rpc/ping`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -99,9 +103,10 @@ class DataManager {
                 }
             });
 
-            if (pingResponse.ok) {
-                setupChecks.connection = true;
-                console.log('✅ 기본 연결: 성공');
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Supabase 연결 성공!', data);
+                return true;
             } else {
                 throw new Error(`기본 연결 실패: ${pingResponse.status}`);
             }

@@ -633,12 +633,22 @@ async function saveParcelData() {
     } catch (error) {
         console.error('저장 중 오류 발생:', error);
         
-        // 오류 시 백업으로 localStorage 저장
+        // 오류 시 백업으로 localStorage 저장 (안전한 처리)
         try {
-            savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
+            const rawData = localStorage.getItem(CONFIG.STORAGE_KEY) || '[]';
+            savedData = JSON.parse(rawData);
+            
+            // 배열이 아닌 경우 빈 배열로 초기화
+            if (!Array.isArray(savedData)) {
+                console.warn('저장된 데이터가 배열이 아닙니다. 초기화합니다:', savedData);
+                savedData = [];
+            }
+            
             const existingIndex = savedData.findIndex(item => 
-                (item.pnu && item.pnu === currentPNU) || 
-                item.parcelNumber === formData.parcelNumber
+                item && ( // item null 체크 추가
+                    (item.pnu && item.pnu === currentPNU) || 
+                    item.parcelNumber === formData.parcelNumber
+                )
             );
             
             if (existingIndex > -1) {
@@ -722,6 +732,41 @@ async function saveParcelData() {
     }
     
     alert(message);
+    
+    // 🎯 ULTRATHINK: 저장 후 실시간 ParcelManager 동기화
+    console.log('🔄 저장 완료 - ParcelManager 실시간 갱신 시작...');
+    
+    try {
+        // 1. ParcelManager가 존재하면 즉시 갱신
+        if (window.parcelManager && typeof window.parcelManager.loadParcels === 'function') {
+            console.log('📋 ParcelManager 데이터 재로드...');
+            window.parcelManager.loadParcels();
+            
+            console.log('📊 ParcelManager 통계 업데이트...');
+            window.parcelManager.updateStatisticsOnly();
+            
+            console.log('🖼️ ParcelManager 화면 렌더링...');
+            window.parcelManager.render();
+            
+            console.log('✅ ParcelManager 실시간 갱신 완료!');
+        } else {
+            console.warn('⚠️ ParcelManager를 찾을 수 없음 - 수동 새로고침 필요');
+        }
+        
+        // 2. 전역 이벤트 발생 (다른 컴포넌트들도 갱신 가능)
+        window.dispatchEvent(new CustomEvent('parcelDataSaved', {
+            detail: { 
+                parcelNumber: savedParcelNumber,
+                syncResult: syncResult,
+                timestamp: new Date().toISOString()
+            }
+        }));
+        console.log('📡 parcelDataSaved 이벤트 발생');
+        
+    } catch (error) {
+        console.error('❌ 실시간 갱신 중 오류:', error);
+        console.log('💡 수동 새로고침을 권장합니다');
+    }
 }
 
 // 저장된 필지 데이터 가져오기
