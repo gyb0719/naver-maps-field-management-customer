@@ -34,6 +34,12 @@ function initMap() {
     map = new naver.maps.Map('map', mapOptions);
     window.map = map;  // 전역 변수로 노출 (검색 기능 사용)
     
+    // ViewportRenderer 초기화
+    if (window.ViewportRenderer) {
+        window.viewportRenderer = new ViewportRenderer(map);
+        console.log('ViewportRenderer 초기화 완료');
+    }
+    
     // 레이어 초기화
     cadastralLayer = new naver.maps.CadastralLayer();
     streetLayer = new naver.maps.StreetLayer();
@@ -94,11 +100,8 @@ function initMap() {
         getParcelInfo(coord.lat(), coord.lng());
     });
     
-    // 지도 이동 시 필지 데이터 로드 및 위치 저장
+    // 지도 이동 시 위치 저장 (ViewportRenderer가 필지 렌더링 담당)
     naver.maps.Event.addListener(map, 'idle', function() {
-        const bounds = map.getBounds();
-        loadParcelsInBounds(bounds);
-        
         // 현재 위치 저장
         const center = map.getCenter();
         const position = {
@@ -109,12 +112,12 @@ function initMap() {
         localStorage.setItem('mapPosition', JSON.stringify(position));
         console.log('위치 저장:', position);
         
-        // 지도 이동 후 저장된 필지 색상 복원
+        // 저장된 필지 색상 복원 (ViewportRenderer와 병행)
         setTimeout(() => {
             if (typeof restoreSavedParcelsOnMap === 'function') {
                 restoreSavedParcelsOnMap();
             }
-        }, 500);
+        }, 200); // 딜레이 단축
     });
 }
 

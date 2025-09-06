@@ -116,6 +116,11 @@ class ParcelManager {
         if (countEl) {
             countEl.textContent = this.parcels.length;
         }
+
+        // ViewportRenderer에 필지 데이터 제공
+        if (window.viewportRenderer) {
+            window.viewportRenderer.setParcels(this.parcels);
+        }
     }
     
     async saveParcels() {
@@ -148,6 +153,12 @@ class ParcelManager {
         parcel.createdAt = new Date().toISOString();
         parcel.tags = [];
         this.parcels.unshift(parcel);
+        
+        // ViewportRenderer에 필지 추가
+        if (window.viewportRenderer) {
+            window.viewportRenderer.addParcel(parcel);
+        }
+        
         this.saveParcels();
         this.applyFilters();
         this.render();
@@ -156,6 +167,12 @@ class ParcelManager {
     removeParcel(id) {
         this.parcels = this.parcels.filter(p => p.id !== id);
         this.selectedParcels.delete(id);
+        
+        // ViewportRenderer에서 필지 제거
+        if (window.viewportRenderer) {
+            window.viewportRenderer.removeParcel(id);
+        }
+        
         this.saveParcels();
         this.applyFilters();
         this.render();
