@@ -133,14 +133,23 @@
                 try {
                     updateStatus(`🔄 ${progress} ${step.name} 로딩 중...`, 'info');
                     await step.action();
-                    console.log(`✅ ${step.name} 완료`);
-                    addResult(`✅ ${progress} ${step.name} 완료`);
+                    
+                    // 단계 완료 후 상태 검증
+                    const verification = verifyStepCompletion(i + 1);
+                    console.log(`✅ ${step.name} 완료 - 상태: ${verification}`);
+                    addResult(`✅ ${progress} ${step.name} 완료 - ${verification}`);
                     
                     // 각 단계 완료 후 짧은 대기
                     await new Promise(resolve => setTimeout(resolve, 200));
                     
                 } catch (error) {
                     console.error(`❌ ${step.name} 실패:`, error);
+                    
+                    // 실패 시 상세 디버깅 정보
+                    const debugInfo = getDebugInfoForStep(i + 1);
+                    addResult(`❌ ${progress} ${step.name} 실패: ${error.message}`);
+                    addResult(`🔍 디버그: ${debugInfo}`);
+                    
                     throw new Error(`${step.name} 실패: ${error.message}`);
                 }
             }
@@ -149,33 +158,66 @@
             document.getElementById('loginBtn').disabled = false;
         }
         
-        // 1단계: Google API 스크립트 로드
+        // 1단계: Google API 스크립트 로드 - 강화된 로딩 시스템
         async function loadGoogleAPIScript() {
-            if (window.gapi) {
-                return; // 이미 로드됨
+            if (window.gapi && 
+                typeof window.gapi.load === 'function' && 
+                window.gapi.load !== undefined) {
+                console.log('✅ Google API 이미 로드됨');
+                return; // 이미 완전히 로드됨
             }
+            
+            console.log('🔄 Google API 스크립트 새로 로드 시작');
             
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
                 script.src = 'https://apis.google.com/js/api.js';
                 script.async = false; // 순차 로딩
+                script.defer = false; // 즉시 실행
+                
+                const timeout = setTimeout(() => {
+                    reject(new Error('Google API 스크립트 로드 타임아웃 (15초)'));
+                }, 15000);
                 
                 script.onload = async () => {
-                    // gapi 객체 사용 가능 대기
+                    console.log('📡 Google API 스크립트 다운로드 완료, 객체 초기화 대기 중...');
+                    
+                    // gapi 객체가 완전히 초기화될 때까지 대기
                     let attempts = 0;
-                    while (attempts < 50) {
-                        if (window.gapi && typeof window.gapi.load === 'function') {
+                    const maxAttempts = 150; // 15초
+                    
+                    while (attempts < maxAttempts) {
+                        if (window.gapi && 
+                            typeof window.gapi.load === 'function' && 
+                            window.gapi.load !== undefined &&
+                            typeof window.gapi.client === 'object') {
+                            
+                            clearTimeout(timeout);
+                            console.log(`✅ GAPI 객체 완전 초기화 완료 (시도 ${attempts + 1})`);
                             resolve();
                             return;
                         }
+                        
                         attempts++;
                         await new Promise(r => setTimeout(r, 100));
+                        
+                        if (attempts % 10 === 0) {
+                            console.log(`⏳ GAPI 초기화 대기 중... ${attempts}/${maxAttempts}`);
+                        }
                     }
-                    reject(new Error('GAPI 객체 로딩 타임아웃'));
+                    
+                    clearTimeout(timeout);
+                    reject(new Error(`GAPI 객체 초기화 타임아웃 (시도 ${attempts}번)`));
                 };
                 
-                script.onerror = () => reject(new Error('Google API 스크립트 로드 실패'));
+                script.onerror = (error) => {
+                    clearTimeout(timeout);
+                    console.error('❌ Google API 스크립트 다운로드 실패:', error);
+                    reject(new Error('Google API 스크립트 네트워크 오류'));
+                };
+                
                 document.head.appendChild(script);
+                console.log('📡 Google API 스크립트 다운로드 시작...');
             });
         }
         
@@ -209,13 +251,52 @@
             });
         }
         
-        // 3단계: GAPI 클라이언트 초기화
+        // 3단계: GAPI 클라이언트 초기화 - 강화된 대기 시스템
         async function initializeGAPIClient() {
+            // gapi 객체가 완전히 준비될 때까지 재확인
+            let attempts = 0;
+            const maxAttempts = 100; // 10초 대기
+            
+            while (attempts < maxAttempts) {
+                if (window.gapi && 
+                    typeof window.gapi.load === 'function' && 
+                    window.gapi.load !== undefined) {
+                    break;
+                }
+                
+                console.log(`GAPI 객체 재확인 ${attempts + 1}/${maxAttempts}`);
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            if (attempts >= maxAttempts) {
+                throw new Error('GAPI 객체 완전 로딩 타임아웃 - gapi.load 사용 불가');
+            }
+            
+            console.log('✅ GAPI 객체 완전 준비됨, 클라이언트 로드 시작');
+            
             return new Promise((resolve, reject) => {
-                gapi.load('client', {
-                    callback: resolve,
-                    onerror: () => reject(new Error('GAPI 클라이언트 로드 실패'))
-                });
+                try {
+                    const loadTimeout = setTimeout(() => {
+                        reject(new Error('GAPI 클라이언트 로드 타임아웃 (10초)'));
+                    }, 10000);
+                    
+                    gapi.load('client', {
+                        callback: () => {
+                            clearTimeout(loadTimeout);
+                            console.log('✅ GAPI 클라이언트 로드 성공');
+                            resolve();
+                        },
+                        onerror: (error) => {
+                            clearTimeout(loadTimeout);
+                            console.error('❌ GAPI 클라이언트 로드 콜백 오류:', error);
+                            reject(new Error(`GAPI 클라이언트 로드 실패: ${error}`));
+                        }
+                    });
+                } catch (error) {
+                    console.error('❌ GAPI 로드 호출 자체 실패:', error);
+                    reject(new Error(`GAPI 로드 호출 실패: ${error.message}`));
+                }
             });
         }
         
@@ -263,6 +344,62 @@
         }
         
         // 이전 initializeAuth 함수는 initializeOAuthClient로 통합됨
+        
+        // 각 단계 완료 상태 검증
+        function verifyStepCompletion(stepNumber) {
+            switch (stepNumber) {
+                case 1: // Google API 스크립트
+                    const gapiStatus = window.gapi ? 
+                        (typeof window.gapi.load === 'function' ? '완전준비' : '부분로드') : '없음';
+                    return `GAPI: ${gapiStatus}`;
+                    
+                case 2: // Google Identity Services
+                    const googleStatus = window.google && window.google.accounts ? 
+                        (window.google.accounts.oauth2 ? '완전준비' : '부분로드') : '없음';
+                    return `Google Identity: ${googleStatus}`;
+                    
+                case 3: // GAPI 클라이언트
+                    const clientStatus = window.gapi && window.gapi.client ? 
+                        (typeof window.gapi.client.init === 'function' ? '완전준비' : '부분로드') : '없음';
+                    return `GAPI Client: ${clientStatus}`;
+                    
+                case 4: // Google Sheets API
+                    const sheetsStatus = window.gapi && window.gapi.client && window.gapi.client.sheets ? 
+                        '완전준비' : '없음';
+                    return `Sheets API: ${sheetsStatus}`;
+                    
+                case 5: // OAuth 클라이언트
+                    const oauthStatus = tokenClient ? '완전준비' : '없음';
+                    return `OAuth Client: ${oauthStatus}`;
+                    
+                default:
+                    return '알 수 없음';
+            }
+        }
+        
+        // 실패 시 단계별 디버깅 정보
+        function getDebugInfoForStep(stepNumber) {
+            const info = [];
+            
+            // 전역 객체 상태
+            info.push(`window.gapi: ${typeof window.gapi}`);
+            info.push(`window.google: ${typeof window.google}`);
+            
+            if (stepNumber >= 1) {
+                info.push(`gapi.load: ${window.gapi ? typeof window.gapi.load : 'N/A'}`);
+                info.push(`gapi.client: ${window.gapi ? typeof window.gapi.client : 'N/A'}`);
+            }
+            
+            if (stepNumber >= 2) {
+                info.push(`google.accounts: ${window.google ? typeof window.google.accounts : 'N/A'}`);
+            }
+            
+            if (stepNumber >= 3) {
+                info.push(`gapi.client.init: ${window.gapi && window.gapi.client ? typeof window.gapi.client.init : 'N/A'}`);
+            }
+            
+            return info.join(', ');
+        }
         
         async function testLogin() {
             try {
