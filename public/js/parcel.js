@@ -76,6 +76,24 @@ async function getParcelInfoViaJSONP(lat, lng, apiKey) {
                         const parcel = features[0];
                         displayParcelInfo(parcel);
                         const polygon = drawParcelPolygon(parcel, true);
+                        
+                        // 🎯 ULTRATHINK: 첫 클릭에서 즉시 색칠 데이터 자동 생성
+                        const pnu = parcel.properties.PNU || parcel.properties.pnu;
+                        let parcelData = getSavedParcelData(pnu);
+                        if (!parcelData && window.paintModeEnabled) {
+                            // parcelData가 없으면 즉시 생성하여 첫 클릭부터 바로 색칠 가능
+                            parcelData = {
+                                pnu: pnu,
+                                jibun: formatJibun(parcel.properties),
+                                color: currentColor,
+                                ownerName: '',
+                                ownerAddress: '', 
+                                ownerContact: '',
+                                memo: ''
+                            };
+                            console.log('🎨 ULTRATHINK: parcelData 자동 생성으로 첫 클릭부터 즉시 색칠 가능');
+                        }
+                        
                         toggleParcelSelection(parcel, polygon);
                         
                         resolve(parcel);
@@ -303,9 +321,10 @@ function drawParcelPolygon(parcel, isSelected = false) {
             savedParcel = getSavedParcelDataByJibun(jibun);
         }
         
-        const fillColor = savedParcel && savedParcel.color ? savedParcel.color : 'transparent';
-        // 🎯 ULTRATHINK: 저장된 색상이 있으면 무조건 0.7로 완전히 보이게
-        const fillOpacity = savedParcel && savedParcel.color && savedParcel.color !== 'transparent' ? 0.7 : 0;
+        // 🎯 ULTRATHINK: 첫 클릭 즉시 색칠 - 저장된 색상이 없으면 현재 색상으로 즉시 적용
+        const fillColor = savedParcel && savedParcel.color ? savedParcel.color : currentColor;
+        // 🎯 ULTRATHINK: 무조건 0.7로 완전히 보이게 (투명한 폴리곤 생성 방지)
+        const fillOpacity = 0.7;
         
         const polygon = new naver.maps.Polygon({
             map: map,

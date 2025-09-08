@@ -5,8 +5,8 @@ require('dotenv').config();
 
 const app = express();
 
-// 포트 설정 - 3000 또는 4000
-const PORT = process.env.PORT || 3000;
+// 포트 설정 - 강제로 3000 포트 사용
+const PORT = 3000;
 
 // CORS 설정
 app.use(cors());
