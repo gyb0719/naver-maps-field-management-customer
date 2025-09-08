@@ -94,7 +94,8 @@ async function getParcelInfoViaJSONP(lat, lng, apiKey) {
                             console.log('🎨 ULTRATHINK: parcelData 자동 생성으로 첫 클릭부터 즉시 색칠 가능');
                         }
                         
-                        toggleParcelSelection(parcel, polygon);
+                        // 🎯 ULTRATHINK: toggleParcelSelection 제거 - 즉시 색칠 시스템에서 불필요
+                        console.log('🎨 ULTRATHINK: 필지 클릭 완료, 즉시 색칠 적용됨');
                         
                         resolve(parcel);
                     } else {
@@ -331,9 +332,9 @@ function drawParcelPolygon(parcel, isSelected = false) {
             paths: paths,
             fillColor: fillColor,
             fillOpacity: fillOpacity,
-            strokeColor: isSelected ? '#FF0000' : '#0000FF',
-            strokeOpacity: 0.6,
-            strokeWeight: isSelected ? 1.5 : 0.5,
+            strokeColor: '#FFFFFF',
+            strokeOpacity: 0.1,
+            strokeWeight: 0.5,
             clickable: true
         });
         
@@ -1857,14 +1858,7 @@ function initializeEventListeners() {
     
     // 내보내기 버튼 제거 (필지 관리 시스템으로 이동)
     
-    // 초기화 버튼들
-    document.getElementById('clearSelectedBtn').addEventListener('click', clearSelectedParcelsColors);
-    document.getElementById('clearSearchBtn').addEventListener('click', function() {
-        // search.js의 clearAllSearchResults 함수 호출
-        if (typeof clearAllSearchResults === 'function') {
-            clearAllSearchResults();
-        }
-    });
+    // 🎯 ULTRATHINK: 초기화 버튼들이 제거되어 이벤트 리스너도 제거됨
     
     // 🎯 ULTRATHINK: 필지 색칠 모드 토글 버튼
     const paintModeToggle = document.getElementById('paintModeToggle');
