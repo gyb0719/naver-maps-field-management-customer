@@ -712,7 +712,7 @@ function showToast(message, type = 'success') {
     }, 2000);
 }
 
-// 저장 버튼 근처에 토스트 메시지 표시
+// 저장 버튼 근처에 토스트 메시지 표시 - ULTRATHINK 아이콘 추가
 function showToastNearButton(message, type = 'success') {
     // 기존 토스트가 있으면 제거
     const existingToast = document.querySelector('.toast-near-button');
@@ -720,10 +720,17 @@ function showToastNearButton(message, type = 'success') {
         existingToast.remove();
     }
     
+    // 타입별 아이콘 정의
+    const icons = {
+        success: '💾', // 저장 아이콘
+        error: '❌',   // 에러 아이콘
+        warning: '⚠️' // 경고 아이콘
+    };
+    
     // 새 토스트 생성
     const toast = document.createElement('div');
     toast.className = `toast-near-button ${type}`;
-    toast.textContent = message;
+    toast.innerHTML = `${icons[type] || '💾'} ${message}`; // 🎯 ULTRATHINK: 아이콘 + 메시지
     
     // 저장 버튼의 부모 요소(form-buttons)에 추가
     const saveBtn = document.getElementById('saveBtn');
@@ -930,12 +937,14 @@ async function saveParcelData() {
         
         console.log(`✅ ${isSearchParcel ? '검색' : '클릭'} 필지 Map 업데이트 완료:`, parcelData);
         
-        // 폴리곤 색상 업데이트 (검색 필지는 보라색 유지)
+        // 폴리곤 색상 업데이트 - ULTRATHINK: 저장 후에도 색상 유지
         if (parcelData.polygon) {
             parcelData.polygon.setOptions({
                 fillColor: formData.color,
-                fillOpacity: isSearchParcel ? 0.7 : 0.5,
-                strokeColor: formData.color
+                fillOpacity: 0.7, // 🎯 ULTRATHINK: 항상 0.7로 진하게 유지
+                strokeColor: formData.color,
+                strokeOpacity: 1.0,
+                strokeWeight: 2
             });
         }
         
@@ -975,6 +984,28 @@ async function saveParcelData() {
     }
     
     showToastNearButton(message, 'success');
+    
+    // 🎯 ULTRATHINK: 저장 완료시 필지 위에 M 마커 표시 (강화된 로직)
+    const targetMap = isSearchParcel ? window.searchParcels : window.clickParcels;
+    const finalParcelData = targetMap ? targetMap.get(currentPNU) : null;
+    
+    console.log('🎯 ULTRATHINK M 마커 디버그:', {
+        currentPNU,
+        isSearchParcel,
+        finalParcelData,
+        hasPolygon: finalParcelData?.polygon ? 'YES' : 'NO',
+        savedParcelNumber
+    });
+    
+    if (finalParcelData && finalParcelData.polygon) {
+        addMemoMarkerToParcel(currentPNU, finalParcelData);
+    } else {
+        console.warn('⚠️ M 마커 생성 실패: 필지 데이터 또는 폴리곤 없음', {
+            currentPNU,
+            finalParcelData: !!finalParcelData,
+            polygon: !!finalParcelData?.polygon
+        });
+    }
     
     // 🎯 ULTRATHINK: 실시간 브로드캐스트 - 최종 저장 완료
     if (window.realtimeDataManager && window.realtimeDataManager.isRealtimeConnected) {
@@ -1806,35 +1837,144 @@ function comprehensiveBugParcelScan() {
     return finalProblemList;
 }
 
-// 🎯 ULTRATHINK: 슈퍼 초기화 함수 (모든 잠재적 버그 해결)
-function superClearAllParcels() {
-    console.log('🌟 === ULTRATHINK 슈퍼 초기화 시작 ===');
+// 🎯 ULTRATHINK: 저장된 필지에 M 마커 표시 기능
+// 메모 마커 관리
+window.memoMarkers = window.memoMarkers || new Map();
+
+// 폴리곤의 중심점 계산 함수
+function calculatePolygonCenter(polygon) {
+    if (!polygon || !polygon.getPaths) return null;
     
-    // 1. 포괄적 버그 필지 검사 및 제거
-    const problemParcels = comprehensiveBugParcelScan();
+    const paths = polygon.getPaths();
+    if (!paths || paths.length === 0) return null;
     
-    // 2. 기본 전체 초기화
-    clearAllParcelsColors();
+    const path = paths.getAt(0);
+    if (!path || path.getLength() === 0) return null;
     
-    // 3. 강력한 메모리 정리
-    if (window.clickParcels) window.clickParcels.clear();
-    if (window.searchParcels) window.searchParcels.clear();
-    if (window.viewportRenderer) {
-        window.viewportRenderer.clearAll();
+    let totalLat = 0;
+    let totalLng = 0;
+    const length = path.getLength();
+    
+    for (let i = 0; i < length; i++) {
+        const point = path.getAt(i);
+        totalLat += point.lat();
+        totalLng += point.lng();
     }
     
-    // 4. localStorage 완전 정리
-    localStorage.removeItem(CONFIG.STORAGE_KEY);
-    
-    console.log('🌟 === ULTRATHINK 슈퍼 초기화 완료 ===');
-    showToast('🌟 ULTRATHINK 슈퍼 초기화 완료!', 'success');
+    return new naver.maps.LatLng(totalLat / length, totalLng / length);
 }
 
-// 전역 함수로 등록 (콘솔에서 사용 가능)
-window.scanAndRemoveAllMemoMarkedParcels = scanAndRemoveAllMemoMarkedParcels;
-window.scanAndRemoveAllRedParcels = scanAndRemoveAllRedParcels;
-window.comprehensiveBugParcelScan = comprehensiveBugParcelScan;
-window.superClearAllParcels = superClearAllParcels;
+// 🎯 ULTRATHINK: 필지에 M 마커 추가 (강화된 버전)
+function addMemoMarkerToParcel(pnu, parcelData) {
+    console.log('🎯 ULTRATHINK: M 마커 생성 시작', {
+        pnu,
+        parcelData: !!parcelData,
+        hasPolygon: !!parcelData?.polygon,
+        mapExists: !!window.map
+    });
+    
+    if (!pnu) {
+        console.error('❌ M 마커 실패: PNU 없음');
+        return false;
+    }
+    
+    if (!parcelData || !parcelData.polygon) {
+        console.error('❌ M 마커 실패: 폴리곤 데이터 없음', { 
+            parcelData: !!parcelData, 
+            polygon: !!parcelData?.polygon 
+        });
+        return false;
+    }
+    
+    if (!window.map) {
+        console.error('❌ M 마커 실패: 지도 객체 없음');
+        return false;
+    }
+    
+    try {
+        // 기존 마커가 있으면 제거
+        if (window.memoMarkers.has(pnu)) {
+            const existingMarker = window.memoMarkers.get(pnu);
+            if (existingMarker) {
+                existingMarker.setMap(null);
+            }
+            window.memoMarkers.delete(pnu);
+            console.log('🗑️ 기존 M 마커 제거:', pnu);
+        }
+        
+        // 폴리곤 중심점 계산
+        const center = calculatePolygonCenter(parcelData.polygon);
+        if (!center) {
+            console.error('❌ M 마커 실패: 중심점 계산 불가', pnu);
+            return false;
+        }
+        
+        console.log('📍 중심점 계산 완료:', center.lat(), center.lng());
+        
+        // M 마커 생성 (더욱 눈에 띄는 디자인)
+        const marker = new naver.maps.Marker({
+            position: center,
+            map: window.map,
+            title: `💾 저장된 필지: ${parcelData.parcelNumber || pnu}`,
+            icon: {
+                content: '<div style="background: #ff4444; border: 3px solid white; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: white; box-shadow: 0 3px 8px rgba(0,0,0,0.4); cursor: pointer;">M</div>',
+                anchor: new naver.maps.Point(13, 13)
+            },
+            zIndex: 2000
+        });
+        
+        // 마커 클릭시 필지 정보 표시
+        naver.maps.Event.addListener(marker, 'click', function() {
+            console.log('💾 저장된 필지 마커 클릭:', pnu, parcelData);
+            if (typeof showToast === 'function') {
+                showToast(`저장된 필지: ${parcelData.parcelNumber || pnu}`, 'info');
+            }
+        });
+        
+        // 마커 저장
+        window.memoMarkers.set(pnu, marker);
+        
+        console.log('✅ ULTRATHINK M 마커 생성 완료!', {
+            pnu,
+            position: `${center.lat()}, ${center.lng()}`,
+            parcelNumber: parcelData.parcelNumber
+        });
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ M 마커 생성 중 오류:', error, { pnu, parcelData });
+        return false;
+    }
+}
+
+// 필지의 M 마커 제거
+function removeMemoMarkerFromParcel(pnu) {
+    if (!pnu || !window.memoMarkers.has(pnu)) return;
+    
+    const marker = window.memoMarkers.get(pnu);
+    marker.setMap(null);
+    window.memoMarkers.delete(pnu);
+    
+    console.log('🗑️ M 마커 제거 완료:', pnu);
+}
+
+// 모든 M 마커 제거
+function clearAllMemoMarkers() {
+    window.memoMarkers.forEach((marker, pnu) => {
+        marker.setMap(null);
+    });
+    window.memoMarkers.clear();
+    
+    console.log('🗑️ 모든 M 마커 제거 완료');
+}
+
+// 전역 함수로 등록 (안전한 함수들만)
+window.clearSelectedParcelsColors = clearSelectedParcelsColors;
+window.clearAllParcelsColors = clearAllParcelsColors;
+window.addMemoMarkerToParcel = addMemoMarkerToParcel;
+window.removeMemoMarkerFromParcel = removeMemoMarkerFromParcel;
+window.clearAllMemoMarkers = clearAllMemoMarkers;
 
 // 이벤트 리스너 초기화
 function initializeEventListeners() {

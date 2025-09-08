@@ -232,10 +232,7 @@ class ParcelManager {
         this.clearMapColors();
     }
     
-    // 전체 데이터 초기화
-    clearAllData() {
-        this.showResetConfirmationPopup();
-    }
+    // 위험한 전체 데이터 초기화 기능 제거됨 - 안전을 위해 비활성화
     
     // 🎯 ULTRATHINK: 초기화 확인 팝업 (실시간 활동과 동일한 스타일)
     showResetConfirmationPopup() {
@@ -864,8 +861,8 @@ class ParcelManager {
                     <button onclick="parcelManager.exportAll()" class="btn-export">
                         엑셀 복사
                     </button>
-                    <button onclick="parcelManager.clearAllData()" class="btn-danger">
-                        전체 초기화
+                    <button onclick="alert('안전을 위해 전체 초기화 기능이 비활성화되었습니다. 색상 초기화 기능을 사용해주세요.')" class="btn-disabled" disabled>
+                        전체 초기화 (비활성화)
                     </button>
                 </div>
             </div>
