@@ -50,7 +50,7 @@ window.searchParcels = new Map(); // 검색으로 찾은 필지 데이터 저장
 window.parcels = window.clickParcels;
 window.searchResults = window.searchParcels;
 
-let searchResultsVisible = true;
+// let searchResultsVisible = true; // config.js에서 선언됨
 window.currentSelectedPNU = null; // 현재 선택된 필지의 PNU (전역 변수로 변경)
 
 // 필지 표시/숨김 관련 유틸리티 함수들
