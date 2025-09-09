@@ -1,0 +1,10 @@
+{
+  "buildCommand": "echo 'Static site, no build needed'",
+  "outputDirectory": "public",
+  "framework": null,
+  "functions": {
+    "api/vworld.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
+}
