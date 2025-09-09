@@ -7,8 +7,8 @@ class SupabaseManager {
     constructor() {
         // Supabase 클라이언트 초기화
         // 🎯 고객용 설정 - 실제 Supabase 정보로 교체하세요
-        this.SUPABASE_URL = 'https://YOUR-PROJECT-ID.supabase.co';
-        this.SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+        this.SUPABASE_URL = 'https://cqfszcbifonxpfasodto.supabase.co';
+        this.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxZnN6Y2JpZm9ueHBmYXNvZHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MTM2NzUsImV4cCI6MjA3Mjk4OTY3NX0.gaEIzHhU8d7e1T8WDzxK-YDW7DPU2aLkD3XBU7TtncI';
         
         // 🎯 ULTRATHINK: Supabase 클라이언트 초기화 (라이브러리 로딩 대기)
         this.supabase = null;
