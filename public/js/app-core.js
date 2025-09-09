@@ -33,14 +33,7 @@ const AppState = {
     map: null,
     
     // 🎯 CONFIG에서 VWorld API 키들 가져오기
-    vworldKeys: CONFIG?.VWORLD_API_KEYS || [
-        '0A0DFD5D-0266-3FAB-8766-06E821646AF7',
-        '360C0EFC-15A9-31F9-8B90-A20D04622410',
-        'BBAC532E-A56D-34CF-B520-CE68E8D6D52A',
-        'E5B1657B-9B6F-3A4B-91EF-98512BE931A1', 
-        '8C62256B-1D08-32FF-AB3C-1FCD67242196',
-        '6B854F88-4A5D-303C-B7C8-40858117A95E'
-    ]
+    vworldKeys: []
 };
 
 // ============================
@@ -1180,6 +1173,15 @@ function initializeApp() {
     if (!AppState.map) {
         console.error('❌ 지도 객체를 찾을 수 없습니다');
         return;
+    }
+    
+    // 🎯 VWorld API 키 CONFIG에서 로드
+    if (typeof CONFIG !== 'undefined' && CONFIG.VWORLD_API_KEYS) {
+        AppState.vworldKeys = CONFIG.VWORLD_API_KEYS;
+        console.log(`🔑 VWorld API 키 로드: ${AppState.vworldKeys.length}개`);
+        console.log(`🔑 첫 번째 키: ${AppState.vworldKeys[0]?.substring(0, 8)}...`);
+    } else {
+        console.error('❌ CONFIG.VWORLD_API_KEYS를 찾을 수 없습니다');
     }
     
     // 🎯 ULTRATHINK: 지도 이벤트는 map-init.js에서 이미 등록됨 (중복 방지)
