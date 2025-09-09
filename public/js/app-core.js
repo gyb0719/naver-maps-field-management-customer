@@ -319,42 +319,61 @@ function removeParcel(pnu) {
 // 지도 이벤트 핸들러
 // ============================
 
+// 🎯 ULTRATHINK: 중복 실행 방지 플래그
+let isHandlingClick = false;
+
 // 지도 좌클릭 이벤트
 async function handleMapLeftClick(e) {
-    console.log('🎯 THINK HARD: handleMapLeftClick 호출됨');
-    
-    if (!AppState.paintMode) {
-        console.log('❌ 색칠 모드가 꺼져있어 클릭 무시');
+    // 🎯 ULTRATHINK: 무한루프 완전 방지 - 중복 실행 차단
+    if (isHandlingClick) {
+        console.log('⚠️ ULTRATHINK: 클릭 처리 중복 실행 방지');
         return;
     }
     
-    if (AppState.searchMode) {
-        console.log('❌ 검색 모드에서는 클릭 무시');
-        return;
-    }
-    
-    const coord = e.coord;
-    console.log(`👆 좌클릭: ${coord.lat()}, ${coord.lng()}`);
-    console.log(`🎯 VWorld API 호출 시작...`);
+    isHandlingClick = true;
     
     try {
-        const parcel = await getParcelFromVWorld(coord.lat(), coord.lng());
-        console.log(`🎯 VWorld API 응답:`, parcel ? '성공' : '실패');
+        console.log('🎯 THINK HARD: handleMapLeftClick 호출됨');
         
-        if (parcel) {
-            console.log(`🎯 필지 데이터 존재, colorParcel 호출`);
-            // 🎯 THINK HARD: colorParcel에서 색칠 + 정보 로드 모두 완료
-            colorParcel(parcel, AppState.currentColor);
-        } else {
-            console.log(`❌ 필지 정보 없음, 패널 초기화`);
-            // 🎯 THINK HARD: 필지 정보 없는 곳 클릭 시 입력 필드 초기화
-            AppState.currentSelectedParcel = null;
-            clearParcelInfoPanel();
-            showToast('이 위치에 필지 정보가 없습니다', 'warning');
+        if (!AppState.paintMode) {
+            console.log('❌ 색칠 모드가 꺼져있어 클릭 무시');
+            return;
+        }
+        
+        if (AppState.searchMode) {
+            console.log('❌ 검색 모드에서는 클릭 무시');
+            return;
+        }
+    
+        const coord = e.coord;
+        console.log(`👆 좌클릭: ${coord.lat()}, ${coord.lng()}`);
+        console.log(`🎯 VWorld API 호출 시작...`);
+        
+        try {
+            const parcel = await getParcelFromVWorld(coord.lat(), coord.lng());
+            console.log(`🎯 VWorld API 응답:`, parcel ? '성공' : '실패');
+            
+            if (parcel) {
+                console.log(`🎯 필지 데이터 존재, colorParcel 호출`);
+                // 🎯 THINK HARD: colorParcel에서 색칠 + 정보 로드 모두 완료
+                colorParcel(parcel, AppState.currentColor);
+            } else {
+                console.log(`❌ 필지 정보 없음, 패널 초기화`);
+                // 🎯 THINK HARD: 필지 정보 없는 곳 클릭 시 입력 필드 초기화
+                AppState.currentSelectedParcel = null;
+                clearParcelInfoPanel();
+                showToast('이 위치에 필지 정보가 없습니다', 'warning');
+            }
+        } catch (error) {
+            console.error('❌ 필지 색칠 실패:', error);
+            showToast('필지 색칠에 실패했습니다', 'error');
         }
     } catch (error) {
-        console.error('❌ 필지 색칠 실패:', error);
-        showToast('필지 색칠에 실패했습니다', 'error');
+        console.error('❌ ULTRATHINK: handleMapLeftClick 전체 오류:', error);
+    } finally {
+        // 🎯 ULTRATHINK: 무한루프 완전 방지 - 플래그 확실히 리셋
+        isHandlingClick = false;
+        console.log('🔓 ULTRATHINK: 클릭 처리 플래그 리셋 완료');
     }
 }
 
@@ -1163,8 +1182,9 @@ function initializeApp() {
         return;
     }
     
-    // 지도 이벤트 등록
-    naver.maps.Event.addListener(AppState.map, 'click', handleMapLeftClick);
+    // 🎯 ULTRATHINK: 지도 이벤트는 map-init.js에서 이미 등록됨 (중복 방지)
+    // 중복 이벤트 리스너 제거 - 무한루프 완전 방지
+    // naver.maps.Event.addListener(AppState.map, 'click', handleMapLeftClick);
     naver.maps.Event.addListener(AppState.map, 'rightclick', handleMapRightClick);
     
     // 버튼 이벤트 등록
