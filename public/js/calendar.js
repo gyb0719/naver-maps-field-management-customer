@@ -87,10 +87,10 @@ function updateCalendar() {
 
 // 드래그 기능 추가
 document.addEventListener('DOMContentLoaded', function() {
-    // 구글 캘린더 자동 연동 시도 (지연 실행)
-    setTimeout(() => {
-        initGoogleCalendar();
-    }, 2000);
+    // 구글 캘린더 자동 연동 시도 (지연 실행) - 임시 비활성화
+    // setTimeout(() => {
+    //     initGoogleCalendar();
+    // }, 2000);
     const calendar = document.getElementById('floatingCalendar');
     const header = document.getElementById('calendarHeader');
     const resizeHandle = document.querySelector('.calendar-resize-handle');
