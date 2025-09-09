@@ -32,13 +32,13 @@ const AppState = {
     // 지도 객체
     map: null,
     
-    // VWorld API 설정
+    // 🎯 고객용 설정 - 실제 VWorld API 키들로 교체하세요
     vworldKeys: [
-        '0A0DFD5D-0266-3FAB-8766-06E821646AF7',
-        'BBAC532E-A56D-34CF-B520-CE68E8D6D52A',
-        'E5B1657B-9B6F-3A4B-91EF-98512BE931A1',
-        '8C62256B-1D08-32FF-AB3C-1FCD67242196',
-        '6B854F88-4A5D-303C-B7C8-40858117A95E'
+        'YOUR_VWORLD_API_KEY_1',
+        'YOUR_VWORLD_API_KEY_2',
+        'YOUR_VWORLD_API_KEY_3',
+        'YOUR_VWORLD_API_KEY_4',
+        'YOUR_VWORLD_API_KEY_5'
     ]
 };
 
@@ -283,8 +283,12 @@ function colorParcel(parcel, color) {
         loadParcelInfoToPanel(currentParcelData);
     }
     
-    // 영구 저장
-    saveToLocalStorage();
+    // 🎯 ULTRATHINK: Supabase 클라우드 저장 (비동기, 별도 실행)
+    if (currentParcelData) {
+        saveParcelToSupabase(currentParcelData).catch(error => {
+            console.error('❌ Supabase 저장 오류:', error);
+        });
+    }
 }
 
 // 필지 삭제하기 (우클릭)
@@ -312,8 +316,8 @@ function removeParcel(pnu) {
     
     // 필지 목록 패널 제거됨 - updateParcelList 호출 제거
     
-    // 영구 저장
-    saveToLocalStorage();
+    // 🎯 ULTRATHINK: Supabase에서 삭제
+    deleteParcelFromSupabase(pnu);
     
     console.log('✅ 필지 삭제 완료');
     showToast('필지가 삭제되었습니다');
@@ -391,71 +395,45 @@ async function handleMapRightClick(e) {
 // 저장 및 복원 시스템
 // ============================
 
-// localStorage에 저장
-function saveToLocalStorage() {
-    try {
-        const saveData = {};
-        
-        AppState.clickParcels.forEach((parcelData, pnu) => {
-            saveData[pnu] = {
-                color: parcelData.color,
-                jibun: parcelData.jibun,
-                timestamp: parcelData.timestamp,
-                isSaved: parcelData.isSaved,
-                hasMarker: parcelData.hasMarker,
-                geometry: parcelData.data.geometry,
-                properties: parcelData.properties,
-                // 추가 정보가 있다면 함께 저장
-                memo: parcelData.memo || '',
-                owner: parcelData.owner || ''
-            };
-        });
-        
-        localStorage.setItem('parcelData', JSON.stringify(saveData));
-        localStorage.setItem('appState', JSON.stringify({
-            paintMode: AppState.paintMode,
-            searchMode: AppState.searchMode,
-            currentColor: AppState.currentColor
-        }));
-        
-        console.log(`💾 로컬 저장 완료: ${Object.keys(saveData).length}개 필지`);
-    } catch (error) {
-        console.error('❌ 로컬 저장 실패:', error);
-    }
-}
 
-// localStorage에서 복원
-function loadFromLocalStorage() {
+// 🎯 ULTRATHINK: Supabase에서 데이터 복원
+async function loadFromSupabase() {
     try {
-        // 상태 복원
-        const savedState = localStorage.getItem('appState');
-        if (savedState) {
-            const state = JSON.parse(savedState);
-            AppState.paintMode = state.paintMode !== undefined ? state.paintMode : true;
-            AppState.searchMode = state.searchMode !== undefined ? state.searchMode : false;
-            AppState.currentColor = state.currentColor || '#FF0000';
+        console.log('🎯 Supabase에서 데이터 복원 시작...');
+        
+        // SupabaseDataManager 대기
+        if (!window.supabaseDataManager) {
+            console.log('⏳ SupabaseDataManager 대기 중...');
+            let attempts = 0;
+            while (!window.supabaseDataManager && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                attempts++;
+            }
+            
+            if (!window.supabaseDataManager) {
+                console.warn('⚠️ SupabaseDataManager를 찾을 수 없어 기본 설정으로 시작');
+                return;
+            }
         }
         
-        // 🎯 ULTRATHINK: parcel.js와 동기화 (초기화 시)
+        // 상태 초기화
+        AppState.paintMode = true;
+        AppState.searchMode = false;
+        AppState.currentColor = '#FF0000';
         window.paintModeEnabled = AppState.paintMode;
-        console.log(`🔗 ULTRATHINK 초기화: AppState.paintMode=${AppState.paintMode}, window.paintModeEnabled=${window.paintModeEnabled}`);
         
-        // 필지 데이터 복원
-        const savedData = localStorage.getItem('parcelData');
-        if (!savedData) {
-            console.log('복원할 데이터가 없습니다');
-            return;
-        }
+        // Supabase에서 모든 필지 데이터 가져오기
+        const allParcels = await window.supabaseDataManager.getAllParcels();
+        console.log(`📊 Supabase에서 ${allParcels.length}개 필지 로드`);
         
-        const data = JSON.parse(savedData);
         let restoreCount = 0;
         
-        Object.entries(data).forEach(([pnu, parcelInfo]) => {
-            if (parcelInfo.geometry && parcelInfo.properties) {
-                const polygon = createPolygonFromGeometry(parcelInfo.geometry, {
-                    fillColor: parcelInfo.color,
+        allParcels.forEach(parcelData => {
+            if (parcelData.geometry && parcelData.pnu) {
+                const polygon = createPolygonFromGeometry(parcelData.geometry, {
+                    fillColor: parcelData.color || '#FF0000',
                     fillOpacity: 0.7,
-                    strokeColor: parcelInfo.color,
+                    strokeColor: parcelData.color || '#FF0000',
                     strokeOpacity: 1.0,
                     strokeWeight: 2
                 });
@@ -466,37 +444,41 @@ function loadFromLocalStorage() {
                         polygon.setMap(AppState.map);
                     }
                     
-                    AppState.clickParcels.set(pnu, {
+                    AppState.clickParcels.set(parcelData.pnu, {
                         polygon: polygon,
-                        color: parcelInfo.color,
-                        pnu: pnu,
-                        data: { geometry: parcelInfo.geometry, properties: parcelInfo.properties },
-                        properties: parcelInfo.properties,
-                        jibun: parcelInfo.jibun,
-                        timestamp: parcelInfo.timestamp,
-                        isSaved: parcelInfo.isSaved || false,
-                        hasMarker: parcelInfo.hasMarker || false,
-                        memo: parcelInfo.memo || '',
-                        owner: parcelInfo.owner || ''
+                        color: parcelData.color || '#FF0000',
+                        pnu: parcelData.pnu,
+                        data: { 
+                            geometry: parcelData.geometry, 
+                            properties: parcelData.properties || {},
+                            owner: parcelData.ownerName || '',
+                            address: parcelData.ownerAddress || '',
+                            contact: parcelData.ownerContact || '',
+                            memo: parcelData.memo || ''
+                        },
+                        properties: parcelData.properties || {},
+                        jibun: formatJibun(parcelData.properties || {}),
+                        timestamp: new Date(parcelData.updated_at || parcelData.created_at).getTime(),
+                        isSaved: true,
+                        hasMarker: true
                     });
                     
-                    // M 마커 복원
-                    if (parcelInfo.hasMarker && parcelInfo.isSaved) {
-                        createMMarker(pnu);
-                    }
+                    // M 마커 생성
+                    createMMarker(parcelData.pnu);
                     
                     restoreCount++;
                 }
             }
         });
         
-        console.log(`✅ 로컬 복원 완료: ${restoreCount}개 필지`);
-        // 필지 목록 패널 제거됨 - updateParcelList 호출 제거
+        console.log(`✅ Supabase 복원 완료: ${restoreCount}개 필지`);
         
     } catch (error) {
-        console.error('❌ 로컬 복원 실패:', error);
+        console.error('❌ Supabase 복원 실패:', error);
+        console.log('🎯 기본 설정으로 시작');
     }
 }
+
 
 // ============================
 // UI 업데이트 함수들  
@@ -591,24 +573,33 @@ function createMMarker(pnu) {
         console.log(`✅ 마커 생성 완료, 지도 표시됨:`, marker.getMap() !== null);
         
         // 🎯 ULTRATHINK: 클릭 이벤트 (한 번만 추가)
-        naver.maps.Event.addListener(marker, 'click', function() {
+        naver.maps.Event.addListener(marker, 'click', async function() {
             console.log(`📝 M 마커 클릭: ${pnu}`);
             
-            // 저장된 데이터 찾아서 폼에 표시
-            const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-            const savedInfo = savedData.find(item => 
-                (item.pnu && item.pnu === pnu) || 
-                item.parcelNumber === parcelData.data?.jibun
-            );
-            
-            if (savedInfo) {
-                const fields = ['parcelNumber', 'ownerName', 'ownerAddress', 'ownerContact', 'memo'];
-                fields.forEach(fieldId => {
-                    const field = document.getElementById(fieldId);
-                    if (field) field.value = savedInfo[fieldId] || '';
-                });
-                AppState.currentSelectedParcel = pnu;
-                console.log(`✅ 저장된 정보 표시: ${savedInfo.parcelNumber}`);
+            try {
+                // 🎯 ULTRATHINK: Supabase에서 저장된 데이터 가져오기
+                const savedInfo = await window.supabaseDataManager?.getParcel(pnu);
+                
+                if (savedInfo) {
+                    const parcelNumberField = document.getElementById('parcelNumber');
+                    const ownerNameField = document.getElementById('ownerName');
+                    const ownerAddressField = document.getElementById('ownerAddress');
+                    const ownerContactField = document.getElementById('ownerContact');
+                    const memoField = document.getElementById('memo');
+                    
+                    if (parcelNumberField) parcelNumberField.value = formatJibun(savedInfo.properties || {});
+                    if (ownerNameField) ownerNameField.value = savedInfo.ownerName || '';
+                    if (ownerAddressField) ownerAddressField.value = savedInfo.ownerAddress || '';
+                    if (ownerContactField) ownerContactField.value = savedInfo.ownerContact || '';
+                    if (memoField) memoField.value = savedInfo.memo || '';
+                    
+                    AppState.currentSelectedParcel = pnu;
+                    console.log(`✅ Supabase에서 저장된 정보 표시: ${pnu}`);
+                } else {
+                    console.log(`⚠️ Supabase에 저장된 정보 없음: ${pnu}`);
+                }
+            } catch (error) {
+                console.error('❌ M 마커 클릭 처리 오류:', error);
             }
         });
         
@@ -852,7 +843,7 @@ function clearParcelInfoPanel() {
 }
 
 // 🎯 THINK HARD: 현재 필지 정보 저장 (선택된 필지 기준)
-function saveCurrentParcel() {
+async function saveCurrentParcel() {
     console.log('🚀 ULTRATHINK: saveCurrentParcel 함수 시작');
     console.log('📊 현재 clickParcels 개수:', AppState.clickParcels.size);
     console.log('📍 currentSelectedParcel:', AppState.currentSelectedParcel);
@@ -973,8 +964,17 @@ function saveCurrentParcel() {
             }
         }, 1000);
         
-        // 저장
-        saveToLocalStorage();
+        // 🎯 ULTRATHINK: Supabase 클라우드 저장
+        await saveParcelToSupabase({
+            pnu: targetPnu,
+            color: targetParcelData.color,
+            properties: targetParcelData.properties,
+            data: targetParcelData.data,
+            ownerName: parcelData.owner,
+            ownerAddress: parcelData.address,
+            ownerContact: parcelData.contact,
+            memo: parcelData.memo
+        });
         
         showToast('저장됨', 'success');
         console.log(`💾 ULTRATHINK 저장 완료: ${parcelData.jibun} (${targetPnu})`);
@@ -1028,7 +1028,7 @@ function togglePaintMode() {
     console.log(`🔗 ULTRATHINK: window.paintModeEnabled 동기화 → ${window.paintModeEnabled}`);
     showToast(`색칠 모드 ${AppState.paintMode ? '활성화' : '비활성화'}`);
     
-    saveToLocalStorage();
+    // 🎯 ULTRATHINK: 상태 변경은 실시간 동기화로 처리 (localStorage 제거)
 }
 
 // 🎯 ULTRATHINK: 검색 모드 토글 (수동 전환용)
@@ -1068,7 +1068,7 @@ function toggleSearchMode() {
     }
     
     showToast(`검색 모드 ${AppState.searchMode ? '활성화' : '비활성화'}`);
-    saveToLocalStorage();
+    // 🎯 ULTRATHINK: 상태 변경은 실시간 동기화로 처리 (localStorage 제거)
 }
 
 // 클릭 필지 표시
@@ -1218,8 +1218,8 @@ function initializeApp() {
         });
     });
     
-    // 저장된 데이터 복원
-    loadFromLocalStorage();
+    // 🎯 ULTRATHINK: Supabase에서 데이터 복원
+    loadFromSupabase();
     
     // 필지 목록 패널 제거됨 - updateParcelList 호출 제거
     
@@ -1251,8 +1251,181 @@ window.clearParcelInfoPanel = clearParcelInfoPanel;
 window.saveCurrentParcel = saveCurrentParcel;
 window.handleMapLeftClick = handleMapLeftClick;
 window.handleMapRightClick = handleMapRightClick;
+window.clearParcel = clearParcel;
 // 기존 코드 호환성: getParcelInfo = getParcelFromVWorld
 window.getParcelInfo = getParcelFromVWorld;
+
+// 🎯 ULTRATHINK: 검색 필지 제거 함수
+function clearParcel(pnu) {
+    console.log('🗑️ clearParcel 함수 호출:', pnu);
+    
+    // 1. 클릭 필지에서 찾기
+    const clickParcel = AppState.clickParcels.get(pnu);
+    if (clickParcel) {
+        console.log('🖱️ 클릭 필지 제거 시도:', pnu);
+        
+        // 폴리곤 제거
+        if (clickParcel.polygon) {
+            clickParcel.polygon.setMap(null);
+        }
+        
+        // M 마커 제거
+        if (clickParcel.memoMarker) {
+            clickParcel.memoMarker.setMap(null);
+        }
+        
+        // 데이터 제거
+        AppState.clickParcels.delete(pnu);
+        
+        // 🎯 ULTRATHINK: Supabase에서 제거
+        deleteParcelFromSupabase(pnu);
+        
+        // sessionStorage에서도 제거 (임시 데이터)
+        try {
+            const tempData = JSON.parse(sessionStorage.getItem('tempParcelColors') || '{}');
+            if (tempData[pnu]) {
+                delete tempData[pnu];
+                sessionStorage.setItem('tempParcelColors', JSON.stringify(tempData));
+            }
+        } catch (error) {
+            console.warn('⚠️ sessionStorage 제거 실패:', error);
+        }
+        
+        showToast('필지 색상이 제거되었습니다', 'info');
+        console.log('✅ 클릭 필지 제거 완료:', pnu);
+        return true;
+    }
+    
+    // 2. 검색 필지에서 찾기 (window.searchParcels 사용)
+    if (window.searchParcels && window.searchParcels.has(pnu)) {
+        console.log('🔍 검색 필지 제거 시도:', pnu);
+        
+        const searchParcel = window.searchParcels.get(pnu);
+        
+        // 폴리곤 제거
+        if (searchParcel.polygon) {
+            searchParcel.polygon.setMap(null);
+        }
+        
+        // 라벨 제거
+        if (searchParcel.label) {
+            searchParcel.label.setMap(null);
+        }
+        
+        // 데이터 제거
+        window.searchParcels.delete(pnu);
+        
+        // sessionStorage에서 검색 필지 제거
+        try {
+            const sessionData = JSON.parse(sessionStorage.getItem('searchParcels') || '{}');
+            if (sessionData[pnu]) {
+                delete sessionData[pnu];
+                sessionStorage.setItem('searchParcels', JSON.stringify(sessionData));
+                console.log('💾 sessionStorage에서 검색 필지 제거 완료:', pnu);
+            }
+        } catch (error) {
+            console.warn('⚠️ sessionStorage 제거 실패:', error);
+        }
+        
+        // localStorage에서도 검색 결과 업데이트
+        if (typeof saveSearchResultsToStorage === 'function') {
+            saveSearchResultsToStorage();
+        }
+        
+        showToast('검색 필지가 제거되었습니다', 'info');
+        console.log('✅ 검색 필지 제거 완료:', pnu);
+        return true;
+    }
+    
+    console.warn('⚠️ 해당 PNU의 필지를 찾을 수 없음:', pnu);
+    return false;
+}
+
+// 🎯 ULTRATHINK: Supabase 클라우드 저장 함수
+async function saveParcelToSupabase(parcelData) {
+    if (!parcelData) {
+        console.warn('⚠️ 저장할 필지 데이터가 없습니다');
+        return;
+    }
+
+    try {
+        console.log('💾 Supabase에 필지 저장 중...', parcelData.pnu);
+        
+        // SupabaseDataManager 대기
+        if (!window.supabaseDataManager) {
+            console.log('⏳ SupabaseDataManager 대기 중...');
+            // 최대 10초 대기
+            let attempts = 0;
+            while (!window.supabaseDataManager && attempts < 100) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            
+            if (!window.supabaseDataManager) {
+                console.error('❌ SupabaseDataManager를 찾을 수 없습니다');
+                return;
+            }
+        }
+
+        // 필지 데이터 형식 변환
+        const supabaseData = {
+            pnu: parcelData.pnu,
+            color: parcelData.color || 'red',
+            properties: parcelData.properties || {},
+            geometry: parcelData.data?.geometry || parcelData.geometry,
+            ownerName: parcelData.ownerName || '',
+            ownerAddress: parcelData.ownerAddress || '',
+            ownerContact: parcelData.ownerContact || '',
+            memo: parcelData.memo || ''
+        };
+
+        // Supabase에 저장
+        const success = await window.supabaseDataManager.saveParcel(parcelData.pnu, supabaseData);
+        
+        if (success) {
+            console.log('✅ Supabase 저장 완료:', parcelData.pnu);
+            // 저장 완료 표시
+            if (parcelData) {
+                parcelData.isSaved = true;
+            }
+            showToast('필지 데이터가 저장되었습니다 ☁️', 'success');
+        } else {
+            console.error('❌ Supabase 저장 실패');
+            showToast('데이터 저장에 실패했습니다', 'error');
+        }
+
+    } catch (error) {
+        console.error('❌ Supabase 저장 오류:', error);
+        showToast('저장 중 오류가 발생했습니다', 'error');
+    }
+}
+
+// 🎯 ULTRATHINK: Supabase에서 필지 삭제 함수  
+async function deleteParcelFromSupabase(pnu) {
+    try {
+        if (!window.supabaseDataManager) {
+            console.warn('⚠️ SupabaseDataManager가 준비되지 않았습니다');
+            return false;
+        }
+
+        console.log('🗑️ Supabase에서 필지 삭제:', pnu);
+        
+        const success = await window.supabaseDataManager.deleteParcel(pnu);
+        
+        if (success) {
+            console.log('✅ Supabase 삭제 완료:', pnu);
+            showToast('필지가 삭제되었습니다 🗑️', 'success');
+            return true;
+        } else {
+            console.error('❌ Supabase 삭제 실패');
+            return false;
+        }
+
+    } catch (error) {
+        console.error('❌ Supabase 삭제 오류:', error);
+        return false;
+    }
+}
 
 // 전역 함수 노출 (기존 코드와의 호환성)
 window.AppCore = {
@@ -1261,8 +1434,7 @@ window.AppCore = {
     toggleSearchMode,
     colorParcel,
     removeParcel,
-    saveToLocalStorage,
-    loadFromLocalStorage,
+    clearParcel,
     showClickParcels,
     hideClickParcels,
     showSearchParcels,
@@ -1272,7 +1444,9 @@ window.AppCore = {
     clearSearchParcels,
     loadParcelInfoToPanel,
     clearParcelInfoPanel,
-    saveCurrentParcel
+    saveCurrentParcel,
+    saveParcelToSupabase,
+    deleteParcelFromSupabase
 };
 
 // 초기화 실행 (지도가 준비된 후)

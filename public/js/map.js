@@ -86,10 +86,10 @@ function initMap() {
         });
     });
     
-    // 지도 클릭 이벤트
+    // 🎯 ULTRATHINK: 지도 클릭 이벤트는 app-core.js에서 통합 처리
+    // 로드뷰 모드만 여기서 처리
     naver.maps.Event.addListener(map, 'click', function(e) {
         const coord = e.coord;
-        console.log('클릭 좌표:', coord.lat(), coord.lng());
         
         // 🎯 ULTRATHINK: 로드뷰 모드 체크 - 활성화된 버튼으로 판단
         const activeButton = document.querySelector('.map-type-btn.active');
@@ -99,18 +99,12 @@ function initMap() {
             // 로드뷰 모드: 클릭한 위치의 로드뷰 표시
             console.log('📍 로드뷰 모드: 클릭 위치에서 거리뷰 표시');
             showStreetView(coord);
+            // 로드뷰 모드에서는 다른 처리 중단
             return;
         }
         
-        // 🎯 ULTRATHINK: app-core.js의 통합 클릭 핸들러 사용
-        console.log('🎯 ULTRATHINK: map.js에서 통합 클릭 핸들러 호출');
-        if (window.handleMapLeftClick) {
-            window.handleMapLeftClick(e);
-        } else if (window.AppState && window.AppState.handleMapLeftClick) {
-            window.AppState.handleMapLeftClick(e);
-        } else {
-            console.warn('🚨 ULTRATHINK: 통합 클릭 핸들러를 찾을 수 없음 (map.js)');
-        }
+        // 🎯 ULTRATHINK: 일반 모드는 app-core.js의 통합 핸들러가 처리
+        // (app-core.js에서 별도로 클릭 이벤트 등록함)
     });
     
     // 지도 이동 시 위치 저장 (ViewportRenderer가 필지 렌더링 담당)

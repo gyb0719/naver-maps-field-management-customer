@@ -240,18 +240,47 @@ function highlightParcel(parcelData, customDisplayText) {
             parcelNumberInput.dispatchEvent(new Event('input'));
         }
         
-        // 폴리곤 클릭 이벤트 추가 - 클릭 시 왼쪽 폼에 정보 입력
-        naver.maps.Event.addListener(highlightPolygon, 'click', function() {
+        // 폴리곤 왼쪽 클릭 이벤트 - 폼에 정보 입력
+        naver.maps.Event.addListener(highlightPolygon, 'click', function(e) {
+            // 우클릭은 처리하지 않음
+            if (e.pointerEvent && e.pointerEvent.button === 2) {
+                return;
+            }
+            
             const parcelNumberInput = document.getElementById('parcelNumber');
             if (parcelNumberInput) {
                 // formatJibun 함수 사용하여 지번 포맷팅
                 const jibun = formatJibun(properties);
                              
                 parcelNumberInput.value = jibun;
-                console.log('🖱️ 필지 클릭 - 지번 입력:', jibun);
+                console.log('🖱️ 검색 필지 클릭 - 지번 입력:', jibun);
                 
                 // 폼의 다른 필드도 초기화 또는 자동 입력 가능
                 document.getElementById('ownerName')?.focus();
+            }
+        });
+
+        // 🎯 ULTRATHINK: 검색 필지 우클릭 색상 제거 기능 추가
+        naver.maps.Event.addListener(highlightPolygon, 'rightclick', function(e) {
+            console.log('🖱️ 검색 필지 우클릭 - 색상 제거 시도');
+            
+            try {
+                // app-core.js의 clearParcel 함수 호출
+                if (window.AppCore && window.AppCore.clearParcel) {
+                    window.AppCore.clearParcel(pnu);
+                    console.log('✅ app-core.js clearParcel 호출 완료');
+                } else if (window.clearParcel) {
+                    window.clearParcel(pnu);
+                    console.log('✅ window.clearParcel 호출 완료');
+                } else {
+                    console.warn('⚠️ clearParcel 함수를 찾을 수 없음');
+                }
+                
+                // 우클릭 기본 메뉴 방지
+                e.pointerEvent?.preventDefault();
+                
+            } catch (error) {
+                console.error('❌ 검색 필지 색상 제거 중 오류:', error);
             }
         });
 
@@ -263,7 +292,7 @@ function highlightParcel(parcelData, customDisplayText) {
 
 // window.searchParcels가 정의되지 않았다면 초기화
 if (typeof window.searchParcels === 'undefined') {
-    window.window.searchParcels = new Map();
+    window.searchParcels = new Map();
 }
 
 // localStorage 키 정의
@@ -273,7 +302,7 @@ const SEARCH_STORAGE_KEY = 'window.searchParcels';
 function saveSearchResultsToStorage() {
     try {
         const searchData = [];
-        window.window.searchParcels.forEach((result, pnu) => {
+        window.searchParcels.forEach((result, pnu) => {
             // 폴리곤과 라벨은 저장하지 않고, 데이터만 저장
             searchData.push({
                 pnu: result.pnu,
@@ -533,6 +562,30 @@ function restoreSearchParcelsFromSession() {
                     console.error('💥 복원 라벨 생성 중 에러:', error);
                     label = null;
                 }
+                
+                // 🎯 ULTRATHINK: 복원된 검색 폴리곤에도 우클릭 이벤트 추가
+                naver.maps.Event.addListener(polygon, 'rightclick', function(e) {
+                    console.log('🖱️ 복원된 검색 필지 우클릭 - 색상 제거 시도');
+                    
+                    try {
+                        // app-core.js의 clearParcel 함수 호출
+                        if (window.AppCore && window.AppCore.clearParcel) {
+                            window.AppCore.clearParcel(pnu);
+                            console.log('✅ app-core.js clearParcel 호출 완료');
+                        } else if (window.clearParcel) {
+                            window.clearParcel(pnu);
+                            console.log('✅ window.clearParcel 호출 완료');
+                        } else {
+                            console.warn('⚠️ clearParcel 함수를 찾을 수 없음');
+                        }
+                        
+                        // 우클릭 기본 메뉴 방지
+                        e.pointerEvent?.preventDefault();
+                        
+                    } catch (error) {
+                        console.error('❌ 복원된 검색 필지 색상 제거 중 오류:', error);
+                    }
+                });
                 
                 // 6단계: window.searchParcels에 저장
                 window.searchParcels.set(pnu, {

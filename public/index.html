@@ -9,7 +9,8 @@
     <title>NAVER Maps Field Management Program</title>
     
     <!-- 네이버 지도 API -->
-    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=xzbnwd2h1z&submodules=geocoder,panorama"></script>
+    <!-- 🎯 고객용 설정 - 실제 네이버 지도 API 키로 교체하세요 -->
+    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=YOUR_NAVER_MAPS_CLIENT_ID&submodules=geocoder,panorama"></script>
     
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -55,6 +56,21 @@
                         <rect x="7" y="17" width="3" height="3" rx="0.5" fill="currentColor"/>
                     </svg>
                     <span>캘린더</span>
+                </button>
+
+                <!-- 백업 관리 버튼 -->
+                <button id="backupToggleBtn" class="header-backup-btn" title="백업 관리">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <polyline points="10,9 9,9 8,9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>백업</span>
+                    <div id="connectionIndicator" class="connection-indicator">
+                        <span class="status-dot connecting"></span>
+                    </div>
                 </button>
                 
             </div>
@@ -130,12 +146,50 @@
                 </form>
             </div>
 
+
             </aside>
 
             <!-- 지도 영역 -->
             <div class="map-container">
                 <div id="map"></div>
                 <div id="pano" style="display:none;"></div>
+                
+                <!-- 플로팅 백업 패널 -->
+                <div id="floatingBackupPanel" class="floating-backup-panel" style="display:none;">
+                    <div class="backup-panel-header">
+                        <h3>💾 백업 관리</h3>
+                        <button class="close-btn" onclick="toggleBackupPanel()">&times;</button>
+                    </div>
+                    <div class="backup-panel-content">
+                        <div class="backup-status-mini">
+                            <div class="status-row">
+                                <span class="status-label">연결:</span>
+                                <div id="connectionStatus" class="status-indicator">
+                                    <span class="status-dot connecting"></span>
+                                    <span class="status-text">확인 중...</span>
+                                </div>
+                            </div>
+                            <div class="status-row">
+                                <span class="status-label">백업:</span>
+                                <span id="lastBackupTime">확인 중...</span>
+                            </div>
+                        </div>
+                        <div class="backup-actions-mini">
+                            <button type="button" id="manualBackupBtn" class="backup-btn-mini primary">
+                                📁 수동 백업
+                            </button>
+                            <button type="button" id="backupHistoryBtn" class="backup-btn-mini secondary">
+                                📋 백업 목록
+                            </button>
+                            <button type="button" id="restoreBtn" class="backup-btn-mini warning">
+                                🔄 복원하기
+                            </button>
+                            <button type="button" id="backupPageBtn" class="backup-btn-mini info" onclick="window.open('/backup.html', '_blank')">
+                                ⚙️ 관리 페이지
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- 🎯 ULTRATHINK: 거리뷰에서 지도로 돌아가기 버튼 -->
                 <div id="streetViewControls" class="street-controls" style="display:none;">
@@ -210,8 +264,31 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOMContentLoaded event');
         });
+
+        // 백업 패널 토글 함수
+        function toggleBackupPanel() {
+            const panel = document.getElementById('floatingBackupPanel');
+            const isVisible = panel.style.display !== 'none';
+            
+            if (isVisible) {
+                panel.style.display = 'none';
+            } else {
+                panel.style.display = 'block';
+            }
+        }
+
+        // 헤더 백업 버튼 클릭 이벤트
+        document.addEventListener('DOMContentLoaded', function() {
+            const backupToggleBtn = document.getElementById('backupToggleBtn');
+            if (backupToggleBtn) {
+                backupToggleBtn.addEventListener('click', toggleBackupPanel);
+            }
+        });
     </script>
-    <!-- 🎯 ULTRATHINK: 새로운 통합 코어 시스템을 최우선 로드 -->
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 🎯 SUPABASE 전용 시스템: localStorage 완전 제거, 클라우드 저장소만 사용 -->
     <script src="/js/app-core.js"></script>
     <script src="/js/config-client.js"></script>
     <script src="/js/config.js"></script>
@@ -219,7 +296,11 @@
     <script src="/js/virtual-scroller.js"></script>
     <script src="/js/viewport-renderer.js"></script>
     <script src="/js/indexeddb-cache.js"></script>
-    <script src="/js/data-manager-simple.js"></script>
+    <!-- Supabase 전용 데이터 관리 시스템 -->
+    <script src="/js/supabase-manager.js"></script>
+    <script src="/js/backup-manager.js"></script>
+    <script src="/js/data-manager-supabase.js"></script>
+    <!-- 기존 시스템 호환성 유지 -->
     <script src="/js/data-manager-realtime.js"></script>
     <script src="/js/user-manager.js"></script>
     <script src="/js/realtime-ui.js"></script>
@@ -233,6 +314,8 @@
     <script src="/js/parcel-manager.js"></script>
     <script src="/js/search.js"></script>
     <script src="/js/sheets.js"></script>
+    <script src="/js/backup-ui.js"></script>
+    <script src="/js/migration-helper.js"></script>
     <script src="/js/mobile-handler.js"></script>
 </body>
 </html>

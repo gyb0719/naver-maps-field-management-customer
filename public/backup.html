@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>백업 관리 - NAVER Maps Field Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f8fafc;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            color: #2b6cb0;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .status-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #4299e1;
+        }
+
+        .status-card h3 {
+            color: #2b6cb0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-description {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            padding: 1.5rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .panel-body {
+            padding: 1.5rem;
+        }
+
+        .backup-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .backup-btn {
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .backup-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .backup-btn.primary {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+        }
+
+        .backup-btn.secondary {
+            background: linear-gradient(135deg, #68d391, #38a169);
+            color: white;
+        }
+
+        .backup-btn.warning {
+            background: linear-gradient(135deg, #f6ad55, #ed8936);
+            color: white;
+        }
+
+        .backup-btn.danger {
+            background: linear-gradient(135deg, #fc8181, #e53e3e);
+            color: white;
+        }
+
+        .backup-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .backup-history {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .backup-item {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .backup-item:last-child {
+            border-bottom: none;
+        }
+
+        .backup-info {
+            flex: 1;
+        }
+
+        .backup-date {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.25rem;
+        }
+
+        .backup-type {
+            font-size: 0.875rem;
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        .backup-size {
+            font-size: 0.75rem;
+            color: #a0aec0;
+        }
+
+        .backup-actions-item {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-restore {
+            background: #4299e1;
+            color: white;
+        }
+
+        .btn-restore:hover {
+            background: #3182ce;
+        }
+
+        .btn-delete {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c53030;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: #718096;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #4299e1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #4299e1;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            background: #e53e3e;
+        }
+
+        .toast.success {
+            background: #38a169;
+        }
+
+        .file-upload {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .file-upload:hover,
+        .file-upload.dragover {
+            border-color: #4299e1;
+            background: #f7fafc;
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .help-section {
+            margin-top: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .help-header {
+            background: #edf2f7;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .help-content {
+            padding: 1.5rem;
+        }
+
+        .help-item {
+            margin-bottom: 1.5rem;
+        }
+
+        .help-item h4 {
+            color: #2b6cb0;
+            margin-bottom: 0.5rem;
+        }
+
+        .help-item p {
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <h1>🗂️ 백업 관리 시스템</h1>
+            <p>필지 데이터의 안전한 백업과 복원을 관리합니다</p>
+        </div>
+
+        <!-- 상태 카드 -->
+        <div class="status-cards">
+            <div class="status-card">
+                <h3>📊 총 필지 수</h3>
+                <div class="status-value" id="totalParcels">로딩 중...</div>
+                <div class="status-description">현재 시스템에 저장된 총 필지 개수</div>
+            </div>
+            <div class="status-card">
+                <h3>💾 마지막 자동 백업</h3>
+                <div class="status-value" id="lastAutoBackup">확인 중...</div>
+                <div class="status-description">시스템이 자동으로 수행한 최근 백업</div>
+            </div>
+            <div class="status-card">
+                <h3>📁 마지막 수동 백업</h3>
+                <div class="status-value" id="lastManualBackup">확인 중...</div>
+                <div class="status-description">사용자가 수동으로 수행한 최근 백업</div>
+            </div>
+            <div class="status-card">
+                <h3>🔗 연결 상태</h3>
+                <div class="status-value" id="connectionStatus">연결 확인 중...</div>
+                <div class="status-description">클라우드 데이터베이스 연결 상태</div>
+            </div>
+        </div>
+
+        <!-- 메인 컨텐츠 -->
+        <div class="main-content">
+            <!-- 백업 작업 패널 -->
+            <div class="panel">
+                <div class="panel-header">
+                    🚀 백업 작업
+                </div>
+                <div class="panel-body">
+                    <div class="backup-actions">
+                        <button class="backup-btn primary" id="manualBackupBtn">
+                            📁 수동 백업 실행
+                        </button>
+                        <button class="backup-btn secondary" id="exportAllBtn">
+                            📊 전체 데이터 내보내기
+                        </button>
+                        <button class="backup-btn warning" id="scheduleBackupBtn">
+                            ⏰ 자동 백업 설정
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 복원 작업 패널 -->
+            <div class="panel">
+                <div class="panel-header">
+                    🔄 데이터 복원
+                </div>
+                <div class="panel-body">
+                    <div class="file-upload" id="fileUpload">
+                        <div class="upload-icon">📤</div>
+                        <p><strong>백업 파일을 여기에 드래그하거나 클릭하여 업로드</strong></p>
+                        <p style="font-size: 0.875rem; color: #718096; margin-top: 0.5rem;">
+                            JSON 형식의 백업 파일만 지원됩니다
+                        </p>
+                        <input type="file" id="fileInput" accept=".json">
+                    </div>
+                    <div class="backup-actions">
+                        <button class="backup-btn warning" id="restoreBtn" disabled>
+                            🔄 데이터 복원하기
+                        </button>
+                        <button class="backup-btn danger" id="emergencyResetBtn">
+                            ⚠️ 긴급 초기화
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 백업 목록 -->
+        <div class="panel" style="margin-top: 2rem;">
+            <div class="panel-header">
+                📋 백업 히스토리
+            </div>
+            <div class="panel-body">
+                <div class="backup-history" id="backupHistory">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        백업 목록 로드 중...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 도움말 섹션 -->
+        <div class="help-section">
+            <div class="help-header">
+                ❓ 사용 가이드
+            </div>
+            <div class="help-content">
+                <div class="help-item">
+                    <h4>🔄 자동 백업</h4>
+                    <p>시스템이 매일 새벽 2시에 자동으로 백업을 수행합니다. 최근 30일간의 백업이 보관되며, 오래된 백업은 자동으로 삭제됩니다.</p>
+                </div>
+                <div class="help-item">
+                    <h4>📁 수동 백업</h4>
+                    <p>언제든지 '수동 백업 실행' 버튼을 클릭하여 즉시 백업을 생성할 수 있습니다. 백업 파일은 컴퓨터에 자동으로 다운로드됩니다.</p>
+                </div>
+                <div class="help-item">
+                    <h4>🔄 데이터 복원</h4>
+                    <p>백업 파일을 업로드하여 데이터를 복원할 수 있습니다. 복원 전 현재 데이터는 자동으로 안전 백업됩니다.</p>
+                </div>
+                <div class="help-item">
+                    <h4>⚠️ 주의사항</h4>
+                    <p>데이터 복원 시 기존 데이터가 덮어쓰여집니다. 중요한 작업 전에는 반드시 수동 백업을 수행하세요.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 토스트 알림 -->
+    <div class="toast" id="toast">
+        <span id="toastMessage">알림 메시지</span>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/js/supabase-manager.js"></script>
+    <script src="/js/backup-manager.js"></script>
+    
+    <script>
+        // 백업 관리 페이지 메인 스크립트
+        class BackupPage {
+            constructor() {
+                this.supabaseManager = null;
+                this.backupManager = null;
+                this.selectedFile = null;
+                
+                this.init();
+            }
+
+            async init() {
+                try {
+                    console.log('🚀 백업 페이지 초기화 시작...');
+                    
+                    // SupabaseManager 초기화
+                    this.supabaseManager = new SupabaseManager();
+                    await this.waitForSupabaseInit();
+                    
+                    // BackupManager 초기화
+                    this.backupManager = new BackupManager(this.supabaseManager);
+                    
+                    // UI 이벤트 리스너 설정
+                    this.setupEventListeners();
+                    
+                    // 초기 데이터 로드
+                    await this.loadInitialData();
+                    
+                    console.log('✅ 백업 페이지 초기화 완료');
+                    
+                } catch (error) {
+                    console.error('❌ 백업 페이지 초기화 실패:', error);
+                    this.showToast('백업 시스템 초기화에 실패했습니다', 'error');
+                }
+            }
+
+            async waitForSupabaseInit() {
+                let attempts = 0;
+                while (!this.supabaseManager.isConnected && attempts < 30) {
+                    console.log('⏳ Supabase 연결 대기 중...');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    attempts++;
+                }
+                
+                if (!this.supabaseManager.isConnected) {
+                    throw new Error('Supabase 연결 시간 초과');
+                }
+            }
+
+            setupEventListeners() {
+                // 수동 백업 버튼
+                document.getElementById('manualBackupBtn').addEventListener('click', () => {
+                    this.performManualBackup();
+                });
+
+                // 전체 데이터 내보내기
+                document.getElementById('exportAllBtn').addEventListener('click', () => {
+                    this.exportAllData();
+                });
+
+                // 파일 업로드
+                const fileUpload = document.getElementById('fileUpload');
+                const fileInput = document.getElementById('fileInput');
+                
+                fileUpload.addEventListener('click', () => fileInput.click());
+                fileUpload.addEventListener('dragover', this.handleDragOver.bind(this));
+                fileUpload.addEventListener('drop', this.handleFileDrop.bind(this));
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+                // 복원 버튼
+                document.getElementById('restoreBtn').addEventListener('click', () => {
+                    this.performRestore();
+                });
+
+                // 긴급 초기화 버튼
+                document.getElementById('emergencyResetBtn').addEventListener('click', () => {
+                    this.performEmergencyReset();
+                });
+            }
+
+            async loadInitialData() {
+                try {
+                    // 통계 정보 로드
+                    const stats = await this.supabaseManager.getStats();
+                    
+                    document.getElementById('totalParcels').textContent = 
+                        stats.totalParcels?.toLocaleString() || '0';
+                    
+                    document.getElementById('connectionStatus').textContent = 
+                        stats.connectionStatus === 'connected' ? '✅ 연결됨' : '❌ 연결 안됨';
+
+                    // 백업 상태 로드
+                    const backupStatus = this.backupManager.getBackupStatus();
+                    
+                    document.getElementById('lastAutoBackup').textContent = 
+                        backupStatus.lastAutoBackup ? 
+                        new Date(backupStatus.lastAutoBackup).toLocaleString() : '없음';
+                    
+                    document.getElementById('lastManualBackup').textContent = 
+                        backupStatus.lastManualBackup ?
+                        new Date(backupStatus.lastManualBackup).toLocaleString() : '없음';
+
+                    // 백업 히스토리 로드
+                    await this.loadBackupHistory();
+
+                } catch (error) {
+                    console.error('❌ 초기 데이터 로드 실패:', error);
+                    this.showToast('데이터 로드에 실패했습니다', 'error');
+                }
+            }
+
+            async loadBackupHistory() {
+                try {
+                    const history = await this.backupManager.getBackupHistory(null, 20);
+                    const historyContainer = document.getElementById('backupHistory');
+                    
+                    if (history.length === 0) {
+                        historyContainer.innerHTML = '<div class="loading">백업 히스토리가 없습니다</div>';
+                        return;
+                    }
+
+                    historyContainer.innerHTML = history.map(backup => `
+                        <div class="backup-item">
+                            <div class="backup-info">
+                                <div class="backup-date">${new Date(backup.created_at).toLocaleString()}</div>
+                                <div class="backup-type">${this.getBackupTypeText(backup.backup_type)}</div>
+                                <div class="backup-size">${backup.metadata?.data_count?.parcels || 0}개 필지</div>
+                            </div>
+                            <div class="backup-actions-item">
+                                <button class="btn-small btn-restore" onclick="backupPage.restoreFromHistory('${backup.backup_id}')">
+                                    복원
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+
+                } catch (error) {
+                    console.error('❌ 백업 히스토리 로드 실패:', error);
+                    document.getElementById('backupHistory').innerHTML = 
+                        '<div class="loading">백업 히스토리 로드에 실패했습니다</div>';
+                }
+            }
+
+            getBackupTypeText(type) {
+                const types = {
+                    'auto_daily': '일일 자동 백업',
+                    'manual': '수동 백업',
+                    'safety_backup': '안전 백업'
+                };
+                return types[type] || type;
+            }
+
+            async performManualBackup() {
+                try {
+                    const btn = document.getElementById('manualBackupBtn');
+                    btn.disabled = true;
+                    btn.textContent = '백업 진행 중...';
+                    
+                    const success = await this.backupManager.performManualBackup();
+                    
+                    if (success) {
+                        this.showToast('수동 백업이 완료되었습니다', 'success');
+                        await this.loadInitialData();
+                    } else {
+                        this.showToast('수동 백업에 실패했습니다', 'error');
+                    }
+
+                } catch (error) {
+                    console.error('❌ 수동 백업 실패:', error);
+                    this.showToast('수동 백업 중 오류가 발생했습니다', 'error');
+                } finally {
+                    const btn = document.getElementById('manualBackupBtn');
+                    btn.disabled = false;
+                    btn.textContent = '📁 수동 백업 실행';
+                }
+            }
+
+            async exportAllData() {
+                try {
+                    const btn = document.getElementById('exportAllBtn');
+                    btn.disabled = true;
+                    btn.textContent = '내보내는 중...';
+                    
+                    const parcels = await this.supabaseManager.loadAllParcels();
+                    
+                    if (parcels.length === 0) {
+                        this.showToast('내보낼 데이터가 없습니다', 'warning');
+                        return;
+                    }
+
+                    const exportData = {
+                        parcels: parcels,
+                        metadata: {
+                            export_date: new Date().toISOString(),
+                            total_parcels: parcels.length,
+                            version: '1.0'
+                        }
+                    };
+
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], 
+                        { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `parcels-export-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    
+                    URL.revokeObjectURL(url);
+                    
+                    this.showToast(`${parcels.length}개 필지 데이터를 내보냈습니다`, 'success');
+
+                } catch (error) {
+                    console.error('❌ 데이터 내보내기 실패:', error);
+                    this.showToast('데이터 내보내기에 실패했습니다', 'error');
+                } finally {
+                    const btn = document.getElementById('exportAllBtn');
+                    btn.disabled = false;
+                    btn.textContent = '📊 전체 데이터 내보내기';
+                }
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.currentTarget.classList.add('dragover');
+            }
+
+            handleFileDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.processFile(files[0]);
+                }
+            }
+
+            handleFileSelect(e) {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    this.processFile(files[0]);
+                }
+            }
+
+            processFile(file) {
+                if (!file.name.endsWith('.json')) {
+                    this.showToast('JSON 파일만 업로드할 수 있습니다', 'error');
+                    return;
+                }
+
+                this.selectedFile = file;
+                document.getElementById('restoreBtn').disabled = false;
+                
+                const uploadArea = document.getElementById('fileUpload');
+                uploadArea.innerHTML = `
+                    <div class="upload-icon">📁</div>
+                    <p><strong>${file.name}</strong></p>
+                    <p style="font-size: 0.875rem; color: #718096;">
+                        파일 크기: ${(file.size / 1024).toFixed(1)} KB
+                    </p>
+                `;
+                
+                this.showToast('백업 파일이 선택되었습니다', 'success');
+            }
+
+            async performRestore() {
+                if (!this.selectedFile) {
+                    this.showToast('복원할 파일을 선택하세요', 'error');
+                    return;
+                }
+
+                if (!confirm('데이터를 복원하시겠습니까? 현재 데이터가 덮어쓰여집니다.')) {
+                    return;
+                }
+
+                try {
+                    const btn = document.getElementById('restoreBtn');
+                    btn.disabled = true;
+                    btn.textContent = '복원 진행 중...';
+
+                    // 파일 읽기
+                    const fileContent = await this.readFileAsText(this.selectedFile);
+                    const backupData = JSON.parse(fileContent);
+
+                    // 데이터 복원
+                    const success = await this.backupManager.restoreFromBackup(backupData);
+
+                    if (success) {
+                        this.showToast('데이터 복원이 완료되었습니다', 'success');
+                        await this.loadInitialData();
+                    } else {
+                        this.showToast('데이터 복원에 실패했습니다', 'error');
+                    }
+
+                } catch (error) {
+                    console.error('❌ 데이터 복원 실패:', error);
+                    this.showToast('데이터 복원 중 오류가 발생했습니다', 'error');
+                } finally {
+                    const btn = document.getElementById('restoreBtn');
+                    btn.disabled = false;
+                    btn.textContent = '🔄 데이터 복원하기';
+                }
+            }
+
+            async performEmergencyReset() {
+                const confirmText = '긴급초기화';
+                const input = prompt(`모든 데이터가 삭제됩니다. 계속하려면 "${confirmText}"를 입력하세요:`);
+                
+                if (input !== confirmText) {
+                    this.showToast('초기화가 취소되었습니다', 'warning');
+                    return;
+                }
+
+                try {
+                    this.showToast('긴급 초기화 기능은 개발 중입니다', 'warning');
+                    
+                } catch (error) {
+                    console.error('❌ 긴급 초기화 실패:', error);
+                    this.showToast('긴급 초기화에 실패했습니다', 'error');
+                }
+            }
+
+            readFileAsText(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsText(file);
+                });
+            }
+
+            showToast(message, type = 'info') {
+                const toast = document.getElementById('toast');
+                const toastMessage = document.getElementById('toastMessage');
+                
+                toastMessage.textContent = message;
+                toast.className = `toast ${type}`;
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            // 백업 히스토리에서 복원
+            async restoreFromHistory(backupId) {
+                if (!confirm('이 백업으로 데이터를 복원하시겠습니까?')) {
+                    return;
+                }
+
+                try {
+                    this.showToast('백업 히스토리에서 복원 기능은 개발 중입니다', 'warning');
+                } catch (error) {
+                    console.error('❌ 히스토리 복원 실패:', error);
+                    this.showToast('복원에 실패했습니다', 'error');
+                }
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        let backupPage;
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                backupPage = new BackupPage();
+            });
+        } else {
+            backupPage = new BackupPage();
+        }
+    </script>
+</body>
+</html>
