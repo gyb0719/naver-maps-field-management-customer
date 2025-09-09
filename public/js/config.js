@@ -2,10 +2,11 @@
 const CONFIG = {
     NAVER_CLIENT_ID: 'xzbnwd2h1z', // 공개 키이므로 노출 가능
     
-    // VWorld API 키들 (최신 작동 키 우선 배치)
+    // VWorld API 키들 (고객 키 최우선 배치)
     VWORLD_API_KEYS: [
+        '5586A557-E79A-32AE-AFD8-E5DB8988E16B', // 고객 최신 키 (최우선)
+        '360C0EFC-15A9-31F9-8B90-A20D04622410', // 고객 이전 키
         '0A0DFD5D-0266-3FAB-8766-06E821646AF7', // 검증된 작동 키
-        '360C0EFC-15A9-31F9-8B90-A20D04622410', // 고객 키
         'BBAC532E-A56D-34CF-B520-CE68E8D6D52A',
         'E5B1657B-9B6F-3A4B-91EF-98512BE931A1', 
         '8C62256B-1D08-32FF-AB3C-1FCD67242196',
