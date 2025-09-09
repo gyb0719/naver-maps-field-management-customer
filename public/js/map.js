@@ -591,6 +591,12 @@ window.onload = function() {
                             loadSearchResultsFromStorage();
                             console.log('💎 저장된 검색 결과 복원 시도');
                         }
+                        
+                        // 🎯 ULTRATHINK: 임시 색칠 데이터 복원 (새로고침 후에도 색칠 유지)
+                        if (typeof restoreTempParcelColors === 'function') {
+                            restoreTempParcelColors();
+                            console.log('✅ ULTRATHINK: 임시 색칠 데이터 복원 완료');
+                        }
                     }, 1500);
                 }
             }, 1000);

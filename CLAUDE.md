@@ -15,6 +15,8 @@ node server.js
 # Testing (Playwright)
 npm test                # Run all tests
 npx playwright test     # Run Playwright tests directly
+npx playwright test --headed  # Run tests with browser visible
+npx playwright test --debug   # Run tests in debug mode
 
 # Note: package.json contains Next.js commands but project uses static Express.js
 npm run dev            # Next.js dev (not used in this static project)
@@ -74,10 +76,11 @@ The server runs on port 3000 by default, with automatic fallback to port 4000 if
 
 ## Important Notes
 
-### API Key Management
-- **VWorld API**: 5 keys with intelligent rotation on failure (`5090194F...`, `CEB482F7...`, etc.)
-- **Naver Maps**: Client ID `xzbnwd2h1z` embedded in frontend
-- **Supabase**: Real-time database with row-level security
+### API Key Management & Multi-Strategy Systems
+- **VWorld API**: 5 keys with intelligent rotation on failure. CONFIG object validation with hardcoded fallback system prevents "Cannot read properties of undefined" errors
+- **Naver Maps**: Client ID `xzbnwd2h1z` embedded in frontend, geocoding proxy via `/api/naver/geocode`
+- **Supabase**: Real-time database with row-level security, 2-second debounced sync
+- **Google Sheets**: Multi-strategy loading (Script injection → iframe → Fetch → Mock API fallback)
 - Environment variables should be set in `.env` file
 
 ### Development Workflow
@@ -87,10 +90,28 @@ The server runs on port 3000 by default, with automatic fallback to port 4000 if
 4. Monitor sync status via built-in UI indicators
 5. Run tests: `npm test` for end-to-end validation
 
+### Critical Architecture Patterns
+
+#### ULTRATHINK Systems
+This codebase implements several "ULTRATHINK" patterns for robustness:
+- **5-key VWorld API fallback**: Prevents service interruption
+- **Multi-strategy Google API loading**: 4 different loading methods with Mock API fallback
+- **CONFIG safety system**: Runtime validation with hardcoded fallbacks
+- **3-tier data persistence**: localStorage + Supabase + Google Sheets
+
+#### Real-time Data Flow
+- **CustomEvent-based communication**: Components communicate via `parcelDataSaved` events
+- **2-second debounced sync**: Prevents API rate limiting while maintaining responsiveness  
+- **ViewportRenderer optimization**: Large polygon datasets rendered efficiently
+- **IndexedDB caching**: Browser-level persistence for 60k+ parcel records
+
+#### Color-Coding System
+- **Paint mode toggle**: ON/OFF system preserves existing coloring while controlling new additions
+- **Left-click paints, right-click removes**: Direct manipulation interface
+- **8-color palette**: Standardized status classification system
+- **Immediate visual feedback**: Single-click complete coloring (no double-click bugs)
+
 ### Server Features
 - Automatic port resolution if 3000 is occupied
 - VWorld API proxy with CORS handling and 5-key rotation
-- **Hybrid Data System**: localStorage + Supabase + Google Sheets (3-tier backup)
-- **Performance optimizations**: 2-second debounced sync, circuit breaker pattern
-- **Conflict prevention**: Data checksums, version tracking, exponential backoff
 - Development-friendly error logging with categorized error classification
