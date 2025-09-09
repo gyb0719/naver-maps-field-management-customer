@@ -3,6 +3,35 @@
 // 🎯 ULTRATHINK: 필지 색칠 모드 전역 변수
 window.paintModeEnabled = true; // 기본값: 색칠 모드 활성화
 
+// 🎯 ULTRATHINK: 디버깅 함수 추가
+window.debugColorSystem = function() {
+    console.log('=== 색칠 시스템 디버깅 ===');
+    console.log('paintModeEnabled:', window.paintModeEnabled);
+    console.log('currentColor:', window.currentColor);
+    console.log('currentMode:', window.currentMode);
+    
+    const paintBtn = document.getElementById('paintModeToggle');
+    if (paintBtn) {
+        console.log('paintModeToggle 버튼:', paintBtn.className);
+        console.log('버튼 텍스트:', paintBtn.textContent);
+    }
+    
+    console.log('색상 팔레트에서 선택된 색상:', document.querySelector('.color-item.active')?.dataset?.color);
+    console.log('=========================');
+    
+    // 강제 색칠 모드 활성화
+    window.paintModeEnabled = true;
+    if (paintBtn && !paintBtn.classList.contains('active')) {
+        paintBtn.classList.add('active');
+        const toggleIcon = paintBtn.querySelector('.toggle-icon');
+        const toggleText = paintBtn.querySelector('.toggle-text');
+        if (toggleIcon) toggleIcon.textContent = '🎨';
+        if (toggleText) toggleText.textContent = '색칠 ON';
+    }
+    
+    console.log('✅ 색칠 모드 강제 활성화 완료');
+};
+
 // 실제 VWorld API로 필지 정보 조회 (JSONP 방식)
 async function getParcelInfo(lat, lng) {
     console.log(`🏢 실제 필지 정보 조회 시작: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
@@ -357,8 +386,8 @@ function drawParcelPolygon(parcel, isSelected = false) {
             // ✅ ULTRATHINK: M 마커 클릭 시 저장된 정보 표시
             naver.maps.Event.addListener(memoMarker, 'click', function() {
                 // PNU로 저장된 데이터 찾기
-                const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-                const savedInfo = savedData.find(item => 
+                const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '{}');
+                const savedInfo = Object.values(savedData).filter(item => item).find(item => 
                     (item.pnu && item.pnu === pnu) || 
                     item.parcelNumber === jibun
                 );
@@ -401,67 +430,27 @@ function drawParcelPolygon(parcel, isSelected = false) {
     }
 }
 
-// 🎯 ULTRATHINK: 왼쪽 클릭 - 색칠 전용 (단순화된 로직)
+// 🎯 ULTRATHINK: 왼쪽 클릭 - 선택과 색칠 로직 분리
 async function handleParcelLeftClick(parcel, polygon) {
     const pnu = parcel.properties.PNU || parcel.properties.pnu;
     const parcelData = window.clickParcels.get(pnu);
     const searchParcelData = window.searchParcels && window.searchParcels.get(pnu);
     const jibun = formatJibun(parcel.properties);
     
-    // 🎯 ULTRATHINK: 색칠 모드가 꺼져있으면 아무것도 안 함
-    if (!window.paintModeEnabled) {
-        console.log('🚫 색칠 모드 OFF - 왼쪽 클릭 무시');
-        return;
-    }
-    
-    // 🎯 ULTRATHINK: 검색 필지(보라색)는 색칠 안 함
-    const isSearchParcel = (parcelData && parcelData.color === '#9370DB') || 
-                           (searchParcelData && searchParcelData.color === '#9370DB');
-    if (isSearchParcel) {
-        console.log('🟣 검색 필지(보라색) - 색칠 안 함');
-        return;
-    }
-    
-    // 🎯 ULTRATHINK: 권한 확인 (간소화)
-    if (window.userManager && window.userManager.canUseRealtimeFeatures()) {
-        const permission = await window.userManager.requestEditPermission(pnu);
-        if (!permission) {
-            console.log('🚫 실시간 편집 권한 없음:', jibun);
-            return;
-        }
-        
-        // 권한 해제 예약
-        setTimeout(async () => {
-            if (window.userManager) {
-                await window.userManager.releaseEditPermission(pnu);
-            }
-        }, 3000);
-    }
-    
-    // 🎯 ULTRATHINK: 무조건 색칠 (저장된 정보 여부와 상관없이)
-    console.log('🎨 ULTRATHINK 왼쪽 클릭 - 바로 색칠:', currentColor, jibun);
-    console.log('🎨 PNU:', pnu, '필지 데이터 존재:', !!parcelData);
-    applyColorToParcel(parcel, currentColor);
-    
-    // ✅ ULTRATHINK: 색칠 후 왼쪽 폼에 필지 정보 표시
+    // ✅ ULTRATHINK: 1단계 - 필지 정보 표시 (항상 실행)
     console.log('📝 필지 정보 왼쪽 폼에 표시 시작:', jibun);
-    
-    // 1. 기본 필지 정보 표시
     displayParcelInfo(parcel);
-    
-    // 2. 현재 선택된 PNU 설정
     window.currentSelectedPNU = pnu;
     
-    // 3. 저장된 정보가 있으면 폼에 로드
-    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-    const savedInfo = savedData.find(item => 
+    // ✅ ULTRATHINK: 2단계 - 저장된 정보 로드 (항상 실행)
+    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '{}');
+    const savedInfo = Object.values(savedData).filter(item => item).find(item => 
         (item.pnu && item.pnu === pnu) || 
         item.parcelNumber === jibun
     );
     
     if (savedInfo) {
         console.log('📝 저장된 정보 발견 - 폼에 로드:', savedInfo.parcelNumber);
-        // 저장된 정보로 폼 채우기
         document.getElementById('ownerName').value = savedInfo.ownerName || '';
         document.getElementById('ownerAddress').value = savedInfo.ownerAddress || '';
         document.getElementById('ownerContact').value = savedInfo.ownerContact || '';
@@ -481,9 +470,42 @@ async function handleParcelLeftClick(parcel, polygon) {
                 }
             });
         }
-    } else {
-        console.log('📝 저장된 정보 없음 - 기본 폼 유지');
     }
+    
+    // 🎯 ULTRATHINK: 3단계 - 색칠 모드가 꺼져있으면 아무것도 하지 않음 (테두리도 칠하지 않음)
+    if (!window.paintModeEnabled) {
+        console.log('🚫 색칠 모드 OFF - 아무 색칠도 하지 않음 (테두리 포함)');
+        return;
+    }
+    
+    // 🎯 ULTRATHINK: 4단계 - 검색 필지(보라색)는 색칠 안 함
+    const isSearchParcel = (parcelData && parcelData.color === '#9370DB') || 
+                           (searchParcelData && searchParcelData.color === '#9370DB');
+    if (isSearchParcel) {
+        console.log('🟣 검색 필지(보라색) - 색칠 안 함');
+        return;
+    }
+    
+    // 🎯 ULTRATHINK: 5단계 - 권한 확인 (간소화)
+    if (window.userManager && window.userManager.canUseRealtimeFeatures()) {
+        const permission = await window.userManager.requestEditPermission(pnu);
+        if (!permission) {
+            console.log('🚫 실시간 편집 권한 없음:', jibun);
+            return;
+        }
+        
+        // 권한 해제 예약
+        setTimeout(async () => {
+            if (window.userManager) {
+                await window.userManager.releaseEditPermission(pnu);
+            }
+        }, 3000);
+    }
+    
+    // 🎯 ULTRATHINK: 6단계 - 색칠 모드 ON일 때만 색칠 진행
+    console.log('🎨 ULTRATHINK 왼쪽 클릭 - 바로 색칠:', currentColor, jibun);
+    console.log('🎨 PNU:', pnu, '필지 데이터 존재:', !!parcelData);
+    applyColorToParcel(parcel, currentColor);
     
     // 로그만 남기고 팝업 없음
     if (parcelData && parcelData.color !== 'transparent' && parcelData.color !== currentColor) {
@@ -493,11 +515,90 @@ async function handleParcelLeftClick(parcel, polygon) {
     }
 }
 
+// 🎯 ULTRATHINK: 선택 하이라이트 시스템
+window.selectedParcelHighlight = null;
+
+// 선택 하이라이트 적용 함수
+function applySelectionHighlight(polygon) {
+    try {
+        // 이전 하이라이트 제거
+        clearSelectionHighlight();
+        
+        if (!polygon) {
+            console.warn('⚠️ applySelectionHighlight: polygon이 null입니다');
+            return;
+        }
+        
+        // 원래 스타일 저장 (현재 polygon의 옵션들을 가져옴)
+        const currentOptions = polygon.getOptions();
+        const originalOptions = {
+            strokeColor: currentOptions.strokeColor || '#000000',
+            strokeWeight: currentOptions.strokeWeight || 1,
+            strokeOpacity: currentOptions.strokeOpacity || 1,
+            fillColor: currentOptions.fillColor || '#FF0000',
+            fillOpacity: currentOptions.fillOpacity || 0.3
+        };
+        
+        // 하이라이트 적용 (노란색 테두리)
+        polygon.setOptions({
+            strokeColor: '#FFFF00',
+            strokeWeight: 3,
+            strokeOpacity: 1
+        });
+        
+        window.selectedParcelHighlight = {
+            polygon: polygon,
+            originalOptions: originalOptions
+        };
+        
+        console.log('✨ 선택 하이라이트 적용 완료');
+    } catch (error) {
+        console.error('❌ 선택 하이라이트 적용 실패:', error);
+    }
+}
+
+// 선택 하이라이트 제거 함수
+function clearSelectionHighlight() {
+    try {
+        if (window.selectedParcelHighlight && window.selectedParcelHighlight.polygon) {
+            // 원래 스타일로 복원
+            window.selectedParcelHighlight.polygon.setOptions(
+                window.selectedParcelHighlight.originalOptions
+            );
+            console.log('🧹 이전 선택 하이라이트 제거 완료');
+        }
+        window.selectedParcelHighlight = null;
+    } catch (error) {
+        console.error('❌ 선택 하이라이트 제거 실패:', error);
+    }
+}
+
 // 🎯 ULTRATHINK: 오른쪽 클릭 - 색 지우기 전용
 async function handleParcelRightClick(parcel, polygon) {
+    try {
+        console.log('🗑️ handleParcelRightClick 시작');
+        console.log('🗑️ parcel 존재:', !!parcel);
+        console.log('🗑️ parcel.properties 존재:', !!(parcel && parcel.properties));
+    
     const pnu = parcel.properties.PNU || parcel.properties.pnu;
+    console.log('🗑️ PNU 추출 완료:', pnu);
+    
     const parcelData = window.clickParcels.get(pnu);
-    const jibun = formatJibun(parcel.properties);
+    console.log('🗑️ parcelData 조회 완료:', !!parcelData);
+    
+    let jibun;
+    try {
+        jibun = formatJibun(parcel.properties);
+        console.log('🗑️ formatJibun 완료:', jibun);
+    } catch (error) {
+        console.error('🗑️ formatJibun 오류:', error);
+        jibun = 'formatJibun 오류';
+    }
+    
+    console.log('🗑️ 디버그 - PNU:', pnu);
+    console.log('🗑️ 디버그 - parcelData:', !!parcelData);
+    console.log('🗑️ 디버그 - parcelData.color:', parcelData ? parcelData.color : 'parcelData 없음');
+    console.log('🗑️ 디버그 - paintModeEnabled:', window.paintModeEnabled);
     
     // 색칠 모드가 꺼져있으면 색 지우기도 불가
     if (!window.paintModeEnabled) {
@@ -505,9 +606,9 @@ async function handleParcelRightClick(parcel, polygon) {
         return;
     }
     
-    // ✅ ULTRATHINK: 저장된 필지 보호 시스템
-    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-    const isSavedParcel = savedData.some(item => 
+    // ✅ ULTRATHINK: 저장된 필지 보호 시스템 - 객체 형식으로 수정
+    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '{}');
+    const isSavedParcel = Object.values(savedData).filter(item => item).some(item => 
         (item.pnu && item.pnu === pnu) || 
         (item.parcelNumber && item.parcelNumber === jibun)
     );
@@ -584,8 +685,12 @@ async function handleParcelRightClick(parcel, polygon) {
     }
     
     // 색칠되어 있는지 확인
+    console.log('🗑️ 색칠 여부 확인 - parcelData 존재:', !!parcelData);
+    console.log('🗑️ 색칠 여부 확인 - color 값:', parcelData ? parcelData.color : 'N/A');
+    console.log('🗑️ 색칠 여부 확인 - transparent 아님:', parcelData ? (parcelData.color !== 'transparent') : false);
+    
     if (parcelData && parcelData.color !== 'transparent') {
-        console.log('🎨 오른쪽 클릭 - 색상 제거:', jibun);
+        console.log('🎨 오른쪽 클릭 - 색상 제거 시작:', jibun);
         
         // 🎯 ULTRATHINK: 편집 권한 확인 (구글 로그인 사용자만 실시간 잠금)
         if (window.userManager) {
@@ -624,6 +729,11 @@ async function handleParcelRightClick(parcel, polygon) {
         console.log('🚫 색칠되지 않은 필지 - 제거할 색상 없음');
     }
     // showToast 제거 - 팝업 없이 조용히 처리
+    
+    } catch (error) {
+        console.error('🗑️ handleParcelRightClick 전체 오류:', error);
+        console.error('🗑️ 오류 스택:', error.stack);
+    }
 }
 
 // 필지 색상 및 정보 제거
@@ -645,9 +755,24 @@ function clearParcel(parcel, polygon) {
         
         // LocalStorage에서 제거 (pnu와 parcelNumber 둘 다 확인)
         let savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-        savedData = savedData.filter(item => item.pnu !== pnu && item.parcelNumber !== jibun);
+        // 🎯 ULTRATHINK: 객체에서 삭제는 delete로 처리
+        delete savedData[pnu];
+        // parcelNumber로도 찾아서 삭제
+        Object.keys(savedData).forEach(key => {
+            const item = savedData[key];
+            if (item && item.parcelNumber === jibun) {
+                delete savedData[key];
+            }
+        });
         localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(savedData));
-        console.log('색상 정보 제거됨:', pnu, jibun);
+        console.log('🗑️ 색상 정보 제거됨:', pnu, jibun);
+        
+        // 🎯 ULTRATHINK: 메모 마커(M 마커) 제거
+        if (parcelData.memoMarker) {
+            parcelData.memoMarker.setMap(null);
+            parcelData.memoMarker = null;
+            console.log('🗑️ 메모 마커(M) 제거 완료:', jibun);
+        }
         
         // 🎯 ULTRATHINK: sessionStorage에서도 임시 색칠 데이터 제거
         try {
@@ -667,6 +792,50 @@ function clearParcel(parcel, polygon) {
         document.getElementById('ownerAddress').value = '';
         document.getElementById('ownerContact').value = '';
         document.getElementById('memo').value = '';
+        
+        // 🎯 ULTRATHINK: 현재 선택된 PNU 초기화 (더 이상 선택된 필지가 없음을 명시)
+        if (window.currentSelectedPNU === pnu) {
+            window.currentSelectedPNU = null;
+            console.log('🗑️ 현재 선택 PNU 초기화:', pnu);
+        }
+        
+        // 🎯 ULTRATHINK: 목록 업데이트 (저장된 필지 목록에서 제거)
+        if (typeof updateParcelList === 'function') {
+            updateParcelList();
+            console.log('🗑️ 필지 목록 업데이트 완료');
+        }
+        
+        // 🎯 ULTRATHINK: 메모 관련 UI 상태 초기화
+        const memoButton = document.querySelector(`[data-pnu="${pnu}"] .memo-btn`);
+        if (memoButton) {
+            memoButton.textContent = 'M';
+            memoButton.style.backgroundColor = '#666';
+            console.log('🗑️ 메모 버튼 UI 초기화:', jibun);
+        }
+        
+        // 🎯 ULTRATHINK: DataManager를 통한 클라우드 동기화 (메모 삭제 반영)
+        if (window.dataManager) {
+            try {
+                await window.dataManager.save(savedData, { 
+                    forceCloudSync: true,
+                    reason: '우클릭 필지 초기화 (메모 포함)'
+                });
+                console.log('🗑️ 클라우드에 메모 삭제 동기화 완료:', jibun);
+            } catch (error) {
+                console.warn('⚠️ 클라우드 동기화 실패:', error);
+            }
+        }
+        
+        // 🎯 ULTRATHINK: 전역 이벤트 발생 (다른 컴포넌트에 메모 삭제 알림)
+        window.dispatchEvent(new CustomEvent('parcelMemoDeleted', {
+            detail: { 
+                pnu: pnu,
+                parcelNumber: jibun,
+                timestamp: new Date().toISOString()
+            }
+        }));
+        
+        console.log('✅ 필지 완전 초기화 완료 (색상, 메모, 데이터, UI, 클라우드):', jibun);
     }
 }
 
@@ -700,85 +869,218 @@ function selectParcel(parcel, polygon) {
     }
 }
 
-// 🎯 ULTRATHINK: 필지에 색상 적용 (무조건 완전 색칠)
-function applyColorToParcel(parcel, color) {
-    const pnu = parcel.properties.PNU || parcel.properties.pnu;
-    let parcelData = window.clickParcels.get(pnu);
-    
-    console.log('🎨 applyColorToParcel 호출:', pnu, color, 'parcelData 존재:', !!parcelData);
-    
-    // 🎯 ULTRATHINK: parcelData가 없으면 즉시 생성! (두 번 클릭 문제 해결)
-    if (!parcelData) {
-        console.log('🚀 ULTRATHINK: parcelData가 없음 - 즉시 생성합니다!');
+// 🎯 ULTRATHINK: 자동 저장 함수 - 색칠된 필지 데이터 즉시 보존
+function autoSaveColoredParcel(pnu, parcel, color) {
+    try {
+        console.log('💾 자동 저장 시작:', pnu, color);
         
-        // 필지 폴리곤 생성 (createParcelPolygon 함수 사용)
-        const polygon = createParcelPolygon(parcel, null, false);
-        if (polygon) {
-            parcelData = {
-                polygon: polygon,
-                color: 'transparent',
+        // 임시 색칠 데이터를 sessionStorage에 저장 (새로고침 시 복원용)
+        const tempColorKey = 'tempColoredParcels';
+        let tempData = JSON.parse(sessionStorage.getItem(tempColorKey) || '{}');
+        
+        // 필지 데이터 구성
+        const saveData = {
+            pnu: pnu,
+            color: color,
+            geometry: parcel.geometry || null,
+            properties: parcel.properties || null,
+            timestamp: Date.now(),
+            autoSaved: true
+        };
+        
+        // 지번 정보도 저장 (복원 시 식별용)
+        if (parcel.properties) {
+            saveData.jibun = formatJibun(parcel.properties);
+            saveData.address = parcel.properties.LDCD_NM || parcel.properties.address;
+        }
+        
+        tempData[pnu] = saveData;
+        sessionStorage.setItem(tempColorKey, JSON.stringify(tempData));
+        
+        console.log('💾 자동 저장 완료:', pnu, '→', color);
+        
+    } catch (error) {
+        console.error('❌ 자동 저장 실패:', error);
+    }
+}
+
+// 🎯 ULTRATHINK: 필지 색칠 함수 - 단순하고 명확한 로직으로 재작성
+function applyColorToParcel(parcel, color) {
+    try {
+        console.log('🎨 ULTRATHINK applyColorToParcel 시작 - 데이터 체크');
+        console.log('🎨 parcel 존재:', !!parcel);
+        console.log('🎨 parcel 타입:', typeof parcel);
+        
+        if (!parcel) {
+            console.error('❌ parcel이 null/undefined:', parcel);
+            return;
+        }
+        
+        console.log('🎨 parcel.properties 존재:', !!parcel.properties);
+        console.log('🎨 color:', color);
+        
+        if (!parcel.properties) {
+            console.error('❌ parcel.properties가 없음:', parcel);
+            return;
+        }
+        
+        const pnu = parcel.properties.PNU || parcel.properties.pnu;
+        console.log('🎨 ULTRATHINK applyColorToParcel 시작:', pnu, color);
+    console.log('🔍 searchParcels 존재:', !!window.searchParcels);
+    console.log('🔍 searchParcels 크기:', window.searchParcels ? window.searchParcels.size : 0);
+    if (window.searchParcels && window.searchParcels.size > 0) {
+        console.log('🔍 searchParcels 키들:', Array.from(window.searchParcels.keys()));
+    }
+    console.log('🔍 찾고있는 PNU:', pnu);
+    console.log('🔍 PNU 매칭 여부:', window.searchParcels ? window.searchParcels.has(pnu) : false);
+    
+    // 🎯 1단계: 검색 필지에서 색칠하는 경우 - 검색 필지를 완전히 제거하고 클릭 필지로 이동
+    if (window.searchParcels && window.searchParcels.has(pnu)) {
+        console.log('🔄 검색 필지 → 클릭 필지 변환:', pnu);
+        
+        // 검색 필지 완전 제거
+        const searchParcel = window.searchParcels.get(pnu);
+        if (searchParcel.polygon) {
+            searchParcel.polygon.setMap(null); // 지도에서 제거
+            console.log('🗑️ 검색 필지 폴리곤 지도에서 제거:', pnu);
+        }
+        if (searchParcel.label) {
+            searchParcel.label.setMap(null); // 라벨도 제거
+        }
+        window.searchParcels.delete(pnu); // searchParcels에서 완전 삭제
+        console.log('✅ searchParcels에서 완전 제거:', pnu);
+        
+        // 새로운 클릭 필지로 생성
+        console.log('🔧 createParcelPolygon 호출 시작:', pnu);
+        const newPolygon = createParcelPolygon(parcel, null, false); // shouldAddToMap=false
+        console.log('🔧 createParcelPolygon 결과:', newPolygon ? '성공' : '실패');
+        if (newPolygon) {
+            // 색상 설정
+            newPolygon.setOptions({
+                fillColor: color,
+                fillOpacity: 0.7,
+                strokeColor: color,
+                strokeOpacity: 1.0,
+                strokeWeight: 2,
+                strokeStyle: 'solid'
+            });
+            
+            // 🎯 ULTRATHINK: 클릭 모드에서는 즉시 지도에 표시
+            newPolygon.setMap(window.map);
+            console.log('✅ 검색→클릭 변환 폴리곤을 지도에 즉시 표시:', pnu);
+            
+            // clickParcels에 새로 저장
+            window.clickParcels.set(pnu, {
+                polygon: newPolygon,
+                color: color,
                 pnu: pnu,
+                data: parcel,
                 properties: parcel.properties
-            };
-            window.clickParcels.set(pnu, parcelData);
-            console.log('🚀 ULTRATHINK: parcelData 생성 완료!', pnu);
+            });
+            
+            console.log('✅ 새로운 클릭 필지 생성 완료:', pnu, color);
+            
+            // 🎯 ULTRATHINK: 임시 저장 시스템 - 새로고침 시 사라지지 않도록
+            autoSaveColoredParcel(pnu, parcel, color);
         } else {
-            console.error('🚫 ULTRATHINK: 폴리곤 생성 실패!', pnu);
+            console.error('❌ 새 폴리곤 생성 실패:', pnu);
             return;
         }
     }
     
-    if (parcelData) {
-        console.log('🎨 폴리곤 setOptions 호출 전:', parcelData.polygon ? 'polygon 존재' : 'polygon 없음');
+    // 🎯 2단계: 기존 클릭 필지 색칠하는 경우
+    else if (window.clickParcels && window.clickParcels.has(pnu)) {
+        console.log('🎨 기존 클릭 필지 색칠:', pnu);
         
-        // 🎯 ULTRATHINK: 임시 색칠은 점선 테두리로 구분
-        parcelData.polygon.setOptions({
-            fillColor: color,
-            fillOpacity: 0.5,        // 임시 데이터는 좀 더 투명하게
-            strokeColor: color,
-            strokeOpacity: 1.0,      // 테두리는 완전히 보이게
-            strokeWeight: 2,
-            strokeStyle: 'dashed'    // 점선으로 임시 데이터 구분
-        });
-        parcelData.color = color;
+        const clickParcel = window.clickParcels.get(pnu);
+        if (clickParcel.polygon) {
+            clickParcel.polygon.setOptions({
+                fillColor: color,
+                fillOpacity: 0.7,
+                strokeColor: color,
+                strokeOpacity: 1.0,
+                strokeWeight: 2,
+                strokeStyle: 'solid'
+            });
+            clickParcel.color = color;
+            console.log('✅ 기존 클릭 필지 색칠 완료:', pnu, color);
+        }
+    }
+    
+    // 🎯 3단계: 새로운 필지 색칠하는 경우 (VWorld API로 새로 가져온 필지)
+    else {
+        console.log('🆕 새로운 필지 색칠:', pnu);
         
-        console.log('🎨 ULTRATHINK 임시 필지 색칠 완료:', pnu, color, 'fillOpacity: 0.5 (점선)');
-        
-        // 🎯 ULTRATHINK: 실시간 브로드캐스트 - 임시 색상 변경
-        if (window.realtimeDataManager && window.realtimeDataManager.isRealtimeConnected) {
-            const parcelInfo = {
-                pnu: pnu,
-                parcelNumber: formatJibun(parcel.properties),
-                color: color,
-                action: 'color_preview', // 임시 색상 변경
-                coordinates: parcel.geometry?.coordinates || parcel.coordinates
-            };
+        const newPolygon = createParcelPolygon(parcel, null, false); // shouldAddToMap=false
+        if (newPolygon) {
+            // 색상 설정
+            newPolygon.setOptions({
+                fillColor: color,
+                fillOpacity: 0.7,
+                strokeColor: color,
+                strokeOpacity: 1.0,
+                strokeWeight: 2,
+                strokeStyle: 'solid'
+            });
             
-            window.realtimeDataManager.broadcastParcelUpdate(parcelInfo)
-                .catch(error => console.warn('임시 색상 브로드캐스트 실패:', error));
-        }
-        
-        // 🎯 ULTRATHINK: sessionStorage에 임시 색칠 데이터 자동 저장
-        try {
-            const tempData = JSON.parse(sessionStorage.getItem('tempParcelColors') || '{}');
-            tempData[pnu] = {
+            // 🎯 ULTRATHINK: 클릭 모드에서는 즉시 지도에 표시
+            newPolygon.setMap(window.map);
+            console.log('✅ 새 필지 폴리곤을 지도에 즉시 표시:', pnu);
+            
+            // clickParcels에 새로 저장
+            window.clickParcels.set(pnu, {
+                polygon: newPolygon,
                 color: color,
-                geometry: parcel.geometry,
-                properties: parcel.properties,
-                timestamp: Date.now(),
-                isSaved: false
-            };
-            sessionStorage.setItem('tempParcelColors', JSON.stringify(tempData));
-            console.log('💾 ULTRATHINK: 임시 색칠 데이터 자동 저장 완료:', pnu, color);
-        } catch (error) {
-            console.warn('⚠️ sessionStorage 저장 실패:', error);
+                pnu: pnu,
+                data: parcel,
+                properties: parcel.properties
+            });
+            
+            console.log('✅ 새 필지 색칠 완료:', pnu, color);
+        } else {
+            console.error('❌ 새 필지 폴리곤 생성 실패:', pnu);
+            return;
         }
+    }
+    
+    // 🎯 4단계: 색칠 완료 후 데이터 저장
+    try {
+        // sessionStorage에 저장 (새로고침 복원용)
+        const tempData = JSON.parse(sessionStorage.getItem('tempParcelColors') || '{}');
+        tempData[pnu] = {
+            color: color,
+            geometry: parcel.geometry,
+            properties: parcel.properties,
+            timestamp: Date.now(),
+            isSaved: true,
+            pnu: pnu
+        };
+        sessionStorage.setItem('tempParcelColors', JSON.stringify(tempData));
         
-        // 주의: localStorage 저장은 saveParcelData() 함수에서만 수행
-        // 클릭만으로는 임시 색상만 적용되고, 저장 버튼을 눌러야 실제 저장됨
-    } else {
-        console.error('🚫 parcelData가 없어서 색칠 실패:', pnu);
-        console.error('🚫 window.clickParcels:', window.clickParcels);
+        // localStorage에 저장 (영구 보관용)
+        const savedData = JSON.parse(localStorage.getItem('parcelData') || '{}');
+        const jibun = formatJibun(parcel.properties);
+        savedData[pnu] = {
+            parcelNumber: jibun,
+            color: color,
+            timestamp: Date.now(),
+            isSaved: true,
+            pnu: pnu,
+            geometry: parcel.geometry,
+            properties: parcel.properties
+        };
+        localStorage.setItem('parcelData', JSON.stringify(savedData));
+        
+        console.log('💾 ULTRATHINK: 색칠 데이터 저장 완료:', pnu, color);
+    } catch (error) {
+        console.warn('⚠️ 데이터 저장 실패:', error);
+    }
+    
+    console.log('🎨 ULTRATHINK applyColorToParcel 완료:', pnu, color);
+    
+    } catch (error) {
+        console.error('❌ applyColorToParcel 오류:', error);
+        console.error('❌ 스택 트레이스:', error.stack);
     }
 }
 
@@ -1134,76 +1436,9 @@ async function saveParcelData() {
         }
     }
     
-    // ✅ ULTRATHINK: 저장 완료 시 M 마커 자동 생성
-    if (currentPNU && parcelData && parcelData.polygon) {
-        console.log('🅼 저장 완료 - M 마커 생성 시작:', savedParcelNumber);
-        
-        // 기존 메모 마커가 있으면 제거
-        if (parcelData.memoMarker) {
-            parcelData.memoMarker.setMap(null);
-            console.log('🅼 기존 M 마커 제거');
-        }
-        
-        // 폴리곤 중심점 계산
-        const bounds = new naver.maps.LatLngBounds();
-        if (geometry && geometry.type === 'Polygon') {
-            geometry.coordinates[0].forEach(coord => {
-                bounds.extend(new naver.maps.LatLng(coord[1], coord[0]));
-            });
-        } else if (geometry && geometry.type === 'MultiPolygon') {
-            geometry.coordinates.forEach(polygon => {
-                polygon[0].forEach(coord => {
-                    bounds.extend(new naver.maps.LatLng(coord[1], coord[0]));
-                });
-            });
-        }
-        
-        const center = bounds.getCenter();
-        
-        // ✅ ULTRATHINK: 저장된 필지에 빨간색 M 마커 생성
-        const memoMarker = new naver.maps.Marker({
-            position: center,
-            map: map,
-            icon: {
-                content: '<div style="background:#ff4444;color:white;border:2px solid white;border-radius:50%;width:24px;height:24px;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer;">M</div>',
-                anchor: new naver.maps.Point(12, 12)
-            }
-        });
-        
-        // M 마커 클릭 시 필지 정보 표시
-        naver.maps.Event.addListener(memoMarker, 'click', function() {
-            const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-            const savedInfo = savedData.find(item => 
-                (item.pnu && item.pnu === currentPNU) || 
-                item.parcelNumber === savedParcelNumber
-            );
-            
-            if (savedInfo) {
-                // 왼쪽 폼에 모든 정보 채우기
-                document.getElementById('parcelNumber').value = savedInfo.parcelNumber || savedParcelNumber;
-                document.getElementById('ownerName').value = savedInfo.ownerName || '';
-                document.getElementById('ownerAddress').value = savedInfo.ownerAddress || '';
-                document.getElementById('ownerContact').value = savedInfo.ownerContact || '';
-                document.getElementById('memo').value = savedInfo.memo || '';
-                
-                // 현재 PNU 설정
-                window.currentSelectedPNU = currentPNU;
-                
-                console.log(`📝 M 마커 클릭: ${savedInfo.parcelNumber} 정보 표시`);
-            }
-        });
-        
-        // parcelData에 메모 마커 저장
-        parcelData.memoMarker = memoMarker;
-        
-        console.log('✅ M 마커 생성 완료:', savedParcelNumber);
-    } else {
-        console.warn('⚠️ M 마커 생성 실패: 필요한 데이터 부족', {
-            currentPNU: !!currentPNU,
-            parcelData: !!parcelData,
-            polygon: !!(parcelData?.polygon)
-        });
-    }
+    // 🎯 ULTRATHINK: M 마커 시스템을 app-core.js로 통합 - 중복 방지
+    // 이전 중복 M 마커 생성 로직을 비활성화하고 app-core.js의 createMMarker 시스템 사용
+    console.log('🅼 저장 완료 - M 마커는 app-core.js의 createMMarker에서 처리됨:', savedParcelNumber);
     
     // 🎯 ULTRATHINK: 저장 후 실시간 ParcelManager 동기화
     console.log('🔄 저장 완료 - ParcelManager 실시간 갱신 시작...');
@@ -1256,15 +1491,16 @@ async function saveParcelData() {
 
 // 저장된 필지 데이터 가져오기
 function getSavedParcelData(pnu) {
-    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-    // PNU로 찾기
-    return savedData.find(item => item.pnu === pnu);
+    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '{}');
+    // 🎯 ULTRATHINK: 객체 형식으로 PNU로 찾기
+    return savedData[pnu] || null;
 }
 
 // 지번으로 저장된 필지 데이터 가져오기
 function getSavedParcelDataByJibun(jibun) {
-    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-    return savedData.find(item => item.parcelNumber === jibun);
+    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '{}');
+    // 🎯 ULTRATHINK: 객체 형식에서 지번으로 찾기
+    return Object.values(savedData).find(item => item && item.parcelNumber === jibun) || null;
 }
 
 // 필지에 메모가 있는지 확인
@@ -1403,11 +1639,12 @@ function loadSavedParcels() {
 
 // 지도에 저장된 필지 색상 복원
 function restoreSavedParcelsOnMap() {
-    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-    console.log(`저장된 필지 ${savedData.length}개 복원 시작`);
+    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '{}');
+    const savedDataArray = Object.values(savedData).filter(item => item); // null/undefined 제거
+    console.log(`저장된 필지 ${savedDataArray.length}개 복원 시작`);
     
     // 저장된 데이터 중 geometry가 있는 항목들 처리
-    savedData.forEach(saved => {
+    savedDataArray.forEach(saved => {
         if (saved.geometry && saved.color && saved.color !== 'transparent') {
             // 검색 필지인지 클릭 필지인지 구분
             const targetMap = saved.isSearchParcel ? window.searchParcels : window.clickParcels;
@@ -1450,7 +1687,7 @@ function restoreSavedParcelsOnMap() {
                     );
                     
                     const polygon = new naver.maps.Polygon({
-                        map: window.currentMode === 'search' ? map : null,
+                        map: map, // 🎯 ULTRATHINK: 항상 폴리곤 생성, 조건부 렌더링 제거
                         paths: coords,
                         ...polygonOptions
                     });
@@ -1460,6 +1697,12 @@ function restoreSavedParcelsOnMap() {
                         data: parcelData,
                         color: '#9370DB'
                     });
+                    
+                    // 🎯 ULTRATHINK: 모드에 따른 표시/숨김 처리
+                    if (window.currentMode !== 'search') {
+                        polygon.setMap(null); // 검색 모드가 아니면 숨김
+                        console.log(`검색 모드 아님 - 검색 필지 숨김: ${saved.parcelNumber}`);
+                    }
                     
                     console.log(`새 검색 필지 생성 및 색상 복원: ${saved.parcelNumber} - #9370DB`);
                 } else {
@@ -1599,8 +1842,8 @@ function clearSelectedParcelsColors() {
         // 사용자가 색칠한 필지만 초기화 (8가지 색상 중 하나)
         if (parcelData.polygon && parcelData.color !== 'transparent' && parcelData.color !== '#FFFF00') {
             // 저장된 정보가 있는 필지는 건너뛰기
-            const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-            const hasInfo = savedData.some(item => {
+            const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '{}');
+            const hasInfo = Object.values(savedData).filter(item => item).some(item => {
                 if (item.pnu !== pnu && (!item.parcelNumber || item.parcelNumber !== parcelData.data?.properties?.jibun)) {
                     return false;
                 }
@@ -2163,8 +2406,8 @@ function initializeEventListeners() {
         });
     });
     
-    // 저장 버튼
-    document.getElementById('saveBtn').addEventListener('click', saveParcelData);
+    // 🎯 ULTRATHINK: 저장 버튼 이벤트는 app-core.js에서 통합 관리
+    // document.getElementById('saveBtn').addEventListener('click', saveParcelData); // 중복 제거
     
     // 초기화 버튼
     document.getElementById('clearBtn').addEventListener('click', () => {
@@ -2220,10 +2463,11 @@ function initializeEventListeners() {
                 toggleIcon.textContent = '🚫';
                 toggleText.textContent = '색칠 OFF';
                 
-                // 🎯 ULTRATHINK: 색칠 OFF - 기존 색칠은 유지, 새로운 색칠만 방지
-                // hideAllPolygonStyles() 호출하지 않음 - 기존 색칠 유지
+                // 🎯 ULTRATHINK: 색칠 OFF - 기존 색칠은 유지, 새로운 색칠과 하이라이트 방지
+                // 현재 선택 하이라이트 제거 (테두리 버그 방지)
+                clearSelectionHighlight();
                 
-                console.log('🚫 필지 색칠 모드 비활성화 - 기존 색칠 유지, 새로운 색칠만 방지');
+                console.log('🚫 필지 색칠 모드 비활성화 - 기존 색칠 유지, 새로운 색칠과 하이라이트 방지');
                 showToast('색칠 OFF - 기존 색칠 유지됨', 'info');
             }
         });
@@ -2234,10 +2478,11 @@ function initializeEventListeners() {
 
 // ✅ ULTRATHINK: 필지 데이터 무결성 검증 및 복구 시스템
 function validateAndRestoreParcelData() {
-    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
+    const savedData = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '{}');
+    const savedDataArray = Object.values(savedData).filter(item => item); // null/undefined 제거
     let restoredCount = 0;
     
-    savedData.forEach(saved => {
+    savedDataArray.forEach(saved => {
         if (saved.pnu && saved.color && saved.color !== 'transparent') {
             const existingParcel = window.clickParcels.get(saved.pnu);
             
@@ -2311,5 +2556,61 @@ setTimeout(() => {
         }, 3000);
     }
 }, 2000);
+
+// 🎯 ULTRATHINK: 전역 함수로 노출
+window.getParcelInfo = getParcelInfo;
+
+// 🎯 ULTRATHINK: createParcelPolygon 전역 함수로 노출 (viewport-renderer에서 가져오기)
+window.createParcelPolygon = function(parcel, color, shouldAddToMap = true) {
+    console.log('🔧 createParcelPolygon 시작, viewportRenderer 존재:', !!window.viewportRenderer);
+    console.log('🔧 shouldAddToMap:', shouldAddToMap);
+    
+    if (window.viewportRenderer && window.viewportRenderer.createParcelPolygon) {
+        console.log('🔧 viewportRenderer.createParcelPolygon 사용');
+        const polygon = window.viewportRenderer.createParcelPolygon(parcel, shouldAddToMap); // 🎯 파라미터 전달
+        console.log('🔧 viewportRenderer 폴리곤 생성 결과:', !!polygon);
+        
+        // 🎯 ULTRATHINK: shouldAddToMap=false인 경우 수동으로 맵에 추가
+        if (polygon && shouldAddToMap && !polygon.getMap()) {
+            polygon.setMap(window.map);
+        }
+        return polygon;
+    }
+    
+    // fallback: 간단한 폴리곤 생성
+    console.warn('⚠️ viewportRenderer 없음 - 기본 폴리곤 생성');
+    const geometry = parcel.geometry;
+    if (!geometry) return null;
+    
+    try {
+        let coordsArray;
+        if (geometry.type === 'MultiPolygon') {
+            coordsArray = geometry.coordinates[0][0];
+        } else if (geometry.type === 'Polygon') {
+            coordsArray = geometry.coordinates[0];
+        } else {
+            return null;
+        }
+        
+        const coords = coordsArray.map(coord => 
+            new naver.maps.LatLng(coord[1], coord[0])
+        );
+        
+        const polygon = new naver.maps.Polygon({
+            map: shouldAddToMap ? window.map : null,
+            paths: coords,
+            fillColor: color || '#FFFF00',
+            fillOpacity: 0.7,
+            strokeColor: color || '#FFFF00',
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+        });
+        
+        return polygon;
+    } catch (error) {
+        console.error('❌ 폴리곤 생성 실패:', error);
+        return null;
+    }
+};
 
 console.log('🎯 ULTRATHINK parcel.js 로드 완료 - 필지 색칠 시스템 + 데이터 무결성 시스템 활성화');

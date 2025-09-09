@@ -229,6 +229,8 @@ body {
     box-shadow: 0 0 0 3px #3498db;
 }
 
+/* 필지 목록 패널 관련 스타일 제거됨 */
+
 .current-color {
     display: flex;
     align-items: center;

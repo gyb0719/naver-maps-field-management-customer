@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>색칠 기능 직접 디버깅</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>🎨 색칠 기능 직접 디버깅</h1>
+    
+    <button onclick="checkColorSystem()">색칠 시스템 체크</button>
+    <button onclick="testDirectColoring()">직접 색칠 테스트</button>
+    <button onclick="clearDebug()">디버그 클리어</button>
+    
+    <div id="debug-output" style="margin-top: 20px; padding: 10px; background: #f0f0f0; white-space: pre-wrap;"></div>
+    
+    <script>
+        function log(message) {
+            const output = document.getElementById('debug-output');
+            output.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+        
+        function clearDebug() {
+            document.getElementById('debug-output').textContent = '';
+        }
+        
+        function checkColorSystem() {
+            log('🔍 색칠 시스템 체크 시작...');
+            
+            // 메인 페이지 체크
+            const mainWindow = window.parent !== window ? window.parent : window.open('http://localhost:3000', '_blank');
+            
+            setTimeout(() => {
+                if (mainWindow && mainWindow.AppState) {
+                    log('✅ AppState 존재함');
+                    log('📊 색칠 모드: ' + mainWindow.AppState.paintMode);
+                    log('🎨 현재 색상: ' + mainWindow.AppState.currentColor);
+                    
+                    // 필수 함수들 체크
+                    const functions = ['colorParcel', 'applyColorToParcel', 'handleMapLeftClick'];
+                    functions.forEach(func => {
+                        const exists = typeof mainWindow[func] === 'function';
+                        log((exists ? '✅' : '❌') + ' ' + func + ' 함수: ' + exists);
+                    });
+                    
+                    // 클릭된 필지 수
+                    const parcelCount = mainWindow.AppState.clickParcels ? mainWindow.AppState.clickParcels.size : 0;
+                    log('📍 클릭된 필지 수: ' + parcelCount);
+                    
+                    if (parcelCount > 0) {
+                        log('📋 클릭된 필지들:');
+                        mainWindow.AppState.clickParcels.forEach((data, pnu) => {
+                            log('  - ' + pnu + ': 색상=' + data.color + ', 폴리곤=' + !!data.polygon);
+                        });
+                    }
+                    
+                } else {
+                    log('❌ 메인 페이지에 접근할 수 없음. 직접 http://localhost:3000 을 열고 콘솔에서 실행하세요:');
+                    log('checkColorSystemDirect()');
+                }
+            }, 1000);
+        }
+        
+        function testDirectColoring() {
+            log('🧪 직접 색칠 테스트...');
+            
+            const mainWindow = window.parent !== window ? window.parent : window.open('http://localhost:3000', '_blank');
+            
+            setTimeout(() => {
+                if (mainWindow && mainWindow.AppState) {
+                    log('1. 빨간색 선택...');
+                    mainWindow.AppState.currentColor = '#FF0000';
+                    
+                    log('2. 색칠 모드 ON...');
+                    mainWindow.AppState.paintMode = true;
+                    
+                    if (mainWindow.AppState.clickParcels.size > 0) {
+                        const firstParcel = mainWindow.AppState.clickParcels.entries().next().value;
+                        const pnu = firstParcel[0];
+                        const data = firstParcel[1];
+                        
+                        log('3. 필지에 색칠 적용: ' + pnu);
+                        
+                        if (mainWindow.applyColorToParcel) {
+                            mainWindow.applyColorToParcel(pnu, '#FF0000');
+                            log('✅ applyColorToParcel 실행 완료');
+                            
+                            setTimeout(() => {
+                                const updatedData = mainWindow.AppState.clickParcels.get(pnu);
+                                log('4. 색칠 결과:');
+                                log('  - 색상: ' + updatedData.color);
+                                log('  - 폴리곤 존재: ' + !!updatedData.polygon);
+                                log('  - 폴리곤 표시됨: ' + (updatedData.polygon ? updatedData.polygon.getMap() !== null : false));
+                            }, 500);
+                        } else {
+                            log('❌ applyColorToParcel 함수가 없음');
+                        }
+                        
+                    } else {
+                        log('❌ 클릭된 필지가 없음. 먼저 지도를 클릭하세요.');
+                    }
+                    
+                } else {
+                    log('❌ 메인 페이지 접근 불가');
+                }
+            }, 1000);
+        }
+        
+        // 메인 페이지에서 실행할 함수
+        window.checkColorSystemDirect = function() {
+            console.log('🔍 색칠 시스템 직접 체크...');
+            
+            if (window.AppState) {
+                console.log('✅ AppState:', window.AppState.paintMode, window.AppState.currentColor);
+                
+                const functions = ['colorParcel', 'applyColorToParcel', 'handleMapLeftClick'];
+                functions.forEach(func => {
+                    console.log((typeof window[func] === 'function' ? '✅' : '❌') + ' ' + func);
+                });
+                
+                console.log('📍 클릭된 필지:', window.AppState.clickParcels.size + '개');
+                
+                if (window.AppState.clickParcels.size > 0) {
+                    window.AppState.clickParcels.forEach((data, pnu) => {
+                        console.log('  -', pnu, '색상:', data.color, '폴리곤:', !!data.polygon);
+                    });
+                }
+                
+                // 강제 색칠 테스트
+                if (window.AppState.clickParcels.size > 0 && window.applyColorToParcel) {
+                    const firstPnu = window.AppState.clickParcels.keys().next().value;
+                    console.log('🧪 강제 빨간색 칠하기:', firstPnu);
+                    window.AppState.currentColor = '#FF0000';
+                    window.AppState.paintMode = true;
+                    window.applyColorToParcel(firstPnu, '#FF0000');
+                    
+                    setTimeout(() => {
+                        const data = window.AppState.clickParcels.get(firstPnu);
+                        console.log('🎨 색칠 결과:', data.color, '표시됨:', data.polygon ? data.polygon.getMap() !== null : false);
+                    }, 500);
+                }
+                
+            } else {
+                console.log('❌ AppState 없음');
+            }
+        };
+        
+        log('📋 사용법:');
+        log('1. http://localhost:3000 을 다른 탭에서 열기');
+        log('2. 필지를 클릭하여 데이터 로드');
+        log('3. 여기서 "색칠 시스템 체크" 버튼 클릭');
+        log('4. 또는 메인 페이지 콘솔에서 checkColorSystemDirect() 실행');
+    </script>
+</body>
+</html>

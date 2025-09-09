@@ -74,7 +74,10 @@
       "Bash(git remote add:*)",
       "WebFetch(domain:navermaps.github.io)",
       "Bash(npm test)",
-      "Bash(start http://localhost:3000)"
+      "Bash(start http://localhost:3000)",
+      "Bash(git switch:*)",
+      "Bash(start /b:*)",
+      "Bash(PORT=3000 node server.js)"
     ],
     "deny": [],
     "ask": []

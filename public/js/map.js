@@ -102,14 +102,15 @@ function initMap() {
             return;
         }
         
-        // 검색 모드에서는 클릭으로 필지를 추가하지 않음
-        if (window.currentMode === 'search') {
-            console.log('검색 모드에서는 클릭으로 필지를 추가하지 않습니다.');
-            return;
+        // 🎯 ULTRATHINK: app-core.js의 통합 클릭 핸들러 사용
+        console.log('🎯 ULTRATHINK: map.js에서 통합 클릭 핸들러 호출');
+        if (window.handleMapLeftClick) {
+            window.handleMapLeftClick(e);
+        } else if (window.AppState && window.AppState.handleMapLeftClick) {
+            window.AppState.handleMapLeftClick(e);
+        } else {
+            console.warn('🚨 ULTRATHINK: 통합 클릭 핸들러를 찾을 수 없음 (map.js)');
         }
-        
-        // 클릭 모드일 때만 Vworld API로 필지 정보 조회
-        getParcelInfo(coord.lat(), coord.lng());
     });
     
     // 지도 이동 시 위치 저장 (ViewportRenderer가 필지 렌더링 담당)
@@ -596,6 +597,14 @@ window.onload = function() {
                         if (typeof restoreTempParcelColors === 'function') {
                             restoreTempParcelColors();
                             console.log('✅ ULTRATHINK: 임시 색칠 데이터 복원 완료');
+                        }
+                        
+                        // 🎯 ULTRATHINK: Early Bootstrap 검색 필지 복원
+                        if (typeof window.earlyRestoreSearchParcels === 'function') {
+                            const restored = window.earlyRestoreSearchParcels();
+                            console.log('✅ ULTRATHINK: Early Bootstrap 검색 필지 복원', restored ? '성공' : '실패');
+                        } else {
+                            console.warn('⚠️ ULTRATHINK: Early Bootstrap 함수 없음');
                         }
                     }, 1500);
                 }

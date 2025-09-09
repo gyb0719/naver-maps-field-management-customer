@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎯 ULTRATHINK M 마커 실시간 디버깅</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Courier New', monospace; margin: 10px; background: #1e1e1e; color: #ffffff; }
+        .panel { background: #2d2d30; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #3e3e42; }
+        .success { color: #4ec9b0; font-weight: bold; }
+        .error { color: #f44747; font-weight: bold; }
+        .warning { color: #ffcc02; font-weight: bold; }
+        .info { color: #569cd6; font-weight: bold; }
+        button { padding: 8px 16px; margin: 3px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .btn-primary { background: #0e639c; color: white; }
+        .btn-success { background: #107c10; color: white; }
+        .btn-warning { background: #ca5010; color: white; }
+        .btn-danger { background: #a4262c; color: white; }
+        pre { background: #1e1e1e; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-size: 11px; overflow-x: auto; }
+        .step { border-left: 4px solid #569cd6; padding-left: 15px; margin: 10px 0; }
+        .highlight { background: #264f78; padding: 2px 4px; border-radius: 3px; }
+        #console { height: 400px; overflow-y: auto; }
+        .console-line { margin: 2px 0; font-size: 11px; }
+        .urgent { background: #a4262c; color: white; padding: 5px; border-radius: 4px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>🎯 ULTRATHINK M 마커 실시간 해결 도구</h1>
+    
+    <div class="urgent">
+        <strong>⚠️ 중요: 먼저 http://localhost:3000 을 열고 필지를 클릭한 후 이 도구를 사용하세요!</strong>
+    </div>
+    
+    <div class="panel">
+        <h3>🔥 ULTRATHINK 강력 진단</h3>
+        <button class="btn-danger" onclick="step1_basicMarkerTest()">1️⃣ 기본 마커 강제 생성 테스트</button>
+        <button class="btn-warning" onclick="step2_coordinateCheck()">2️⃣ 좌표 및 위치 검증</button>
+        <button class="btn-primary" onclick="step3_forceVisibleMarker()">3️⃣ 강제 가시성 마커 생성</button>
+        <button class="btn-success" onclick="step4_ultimateMarkerTest()">4️⃣ 궁극 마커 테스트</button>
+        <button class="btn-warning" onclick="step5_realTimeMonitor()">5️⃣ 실시간 모니터링</button>
+    </div>
+    
+    <div class="panel">
+        <h3>📊 실시간 콘솔</h3>
+        <button class="btn-primary" onclick="clearConsole()">🔄 클리어</button>
+        <button class="btn-success" onclick="copyResults()">📋 결과 복사</button>
+        <div id="console"></div>
+    </div>
+    
+    <script>
+        let mainWindow = null;
+        let monitorInterval = null;
+        let logBuffer = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'success': '#4ec9b0',
+                'error': '#f44747', 
+                'warning': '#ffcc02',
+                'info': '#569cd6'
+            };
+            
+            const logLine = `[${timestamp}] ${message}`;
+            logBuffer.push(logLine);
+            
+            const console = document.getElementById('console');
+            const line = document.createElement('div');
+            line.className = 'console-line';
+            line.style.color = colors[type] || '#ffffff';
+            line.textContent = logLine;
+            console.appendChild(line);
+            console.scrollTop = console.scrollHeight;
+            
+            // 메인 페이지 콘솔에도 출력
+            if (mainWindow && !mainWindow.closed) {
+                mainWindow.console.log(`[ULTRATHINK] ${message}`);
+            }
+        }
+        
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+            logBuffer = [];
+        }
+        
+        function copyResults() {
+            navigator.clipboard.writeText(logBuffer.join('\\n'));
+            log('결과가 클립보드에 복사되었습니다', 'success');
+        }
+        
+        function getMainWindow() {
+            if (!mainWindow || mainWindow.closed) {
+                // 기존 창들 찾기
+                if (window.opener && !window.opener.closed) {
+                    mainWindow = window.opener;
+                } else {
+                    try {
+                        // 새 창에서 메인 페이지 열기
+                        mainWindow = window.open('http://localhost:3000', 'mainApp', 'width=1400,height=900');
+                        log('⚠️ 새 창에서 메인 페이지를 열었습니다. 필지를 클릭한 후 다시 시도하세요.', 'warning');
+                        return null;
+                    } catch (error) {
+                        log(`❌ 메인 페이지 접근 실패: ${error.message}`, 'error');
+                        return null;
+                    }
+                }
+            }
+            return mainWindow;
+        }
+        
+        function step1_basicMarkerTest() {
+            log('🔥 1단계: 기본 마커 강제 생성 테스트', 'warning');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    if (!win.naver || !win.naver.maps) {
+                        log('❌ 네이버 맵스 API가 로드되지 않음', 'error');
+                        return;
+                    }
+                    
+                    if (!win.AppState || !win.AppState.map) {
+                        log('❌ AppState 또는 map 객체가 없음', 'error');
+                        return;
+                    }
+                    
+                    log('✅ 네이버 맵스 API 및 지도 객체 확인', 'success');
+                    
+                    // 지도 중심에 간단한 빨간 점 마커 생성
+                    const mapCenter = win.AppState.map.getCenter();
+                    log(`📍 지도 중심 좌표: ${mapCenter.lat()}, ${mapCenter.lng()}`, 'info');
+                    
+                    // 기본 마커 생성 (가장 단순한 형태)
+                    const testMarker = new win.naver.maps.Marker({
+                        position: mapCenter,
+                        map: win.AppState.map,
+                        title: 'ULTRATHINK 테스트 마커'
+                    });
+                    
+                    log('🎯 기본 테스트 마커 생성 완료', 'success');
+                    
+                    // 5초 후 제거
+                    setTimeout(() => {
+                        testMarker.setMap(null);
+                        log('🗑️ 테스트 마커 제거됨', 'info');
+                        
+                        // 이제 커스텀 M 마커 테스트
+                        step1_customMMarker(win, mapCenter);
+                        
+                    }, 5000);
+                    
+                } catch (error) {
+                    log(`❌ 기본 마커 테스트 실패: ${error.message}`, 'error');
+                    log(`스택: ${error.stack}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function step1_customMMarker(win, position) {
+            try {
+                log('🎯 커스텀 M 마커 생성 테스트', 'warning');
+                
+                // 기존 방식과 다른 방법으로 시도
+                const customMarker = new win.naver.maps.Marker({
+                    position: position,
+                    map: win.AppState.map,
+                    icon: {
+                        content: '<div style="width: 30px; height: 30px; background: #ff0000; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; border: 3px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.5); z-index: 9999 !important;">M</div>',
+                        anchor: new win.naver.maps.Point(15, 15)
+                    },
+                    zIndex: 9999
+                });
+                
+                log('✅ 커스텀 M 마커 생성 완료', 'success');
+                log('👀 5초간 확인 후 자동 제거됩니다', 'info');
+                
+                // 5초 후 제거
+                setTimeout(() => {
+                    customMarker.setMap(null);
+                    log('🗑️ 커스텀 M 마커 제거됨', 'info');
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ 커스텀 M 마커 생성 실패: ${error.message}`, 'error');
+            }
+        }
+        
+        function step2_coordinateCheck() {
+            log('🔥 2단계: 좌표 및 위치 검증', 'warning');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    if (!win.AppState?.clickParcels?.size) {
+                        log('❌ 클릭된 필지가 없습니다. 먼저 지도를 클릭하세요!', 'error');
+                        return;
+                    }
+                    
+                    const parcels = Array.from(win.AppState.clickParcels.entries());
+                    const [pnu, parcelData] = parcels[0];
+                    
+                    log(`📋 검사할 필지: ${pnu}`, 'info');
+                    log(`📝 지번: ${parcelData.data?.jibun}`, 'info');
+                    
+                    // 지오메트리 확인
+                    const geometry = parcelData.data?.geometry;
+                    if (!geometry) {
+                        log('❌ 필지 지오메트리 데이터 없음', 'error');
+                        return;
+                    }
+                    
+                    log(`📐 지오메트리 타입: ${geometry.type}`, 'success');
+                    log(`📐 좌표 수: ${geometry.coordinates[0]?.length}`, 'info');
+                    
+                    // 좌표 범위 확인
+                    const coords = geometry.coordinates[0];
+                    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+                    
+                    coords.forEach(coord => {
+                        const lat = coord[1];
+                        const lng = coord[0];
+                        minLat = Math.min(minLat, lat);
+                        maxLat = Math.max(maxLat, lat);
+                        minLng = Math.min(minLng, lng);
+                        maxLng = Math.max(maxLng, lng);
+                    });
+                    
+                    const centerLat = (minLat + maxLat) / 2;
+                    const centerLng = (minLng + maxLng) / 2;
+                    
+                    log(`🎯 계산된 중심점: ${centerLat}, ${centerLng}`, 'success');
+                    log(`📊 좌표 범위: lat(${minLat}~${maxLat}), lng(${minLng}~${maxLng})`, 'info');
+                    
+                    // 현재 지도 뷰 범위와 비교
+                    const mapBounds = win.AppState.map.getBounds();
+                    const sw = mapBounds.getSW();
+                    const ne = mapBounds.getNE();
+                    
+                    log(`🗺️ 지도 뷰 범위: lat(${sw.lat()}~${ne.lat()}), lng(${sw.lng()}~${ne.lng()})`, 'info');
+                    
+                    // 중심점이 지도 뷰 안에 있는지 확인
+                    const inView = centerLat >= sw.lat() && centerLat <= ne.lat() && 
+                                   centerLng >= sw.lng() && centerLng <= ne.lng();
+                    
+                    log(`👁️ 중심점이 현재 뷰에 있음: ${inView}`, inView ? 'success' : 'error');
+                    
+                    if (!inView) {
+                        log('⚠️ 필지가 현재 화면 밖에 있을 수 있습니다', 'warning');
+                        
+                        // 해당 좌표로 지도 이동
+                        win.AppState.map.setCenter(new win.naver.maps.LatLng(centerLat, centerLng));
+                        log('📍 해당 좌표로 지도를 이동했습니다', 'success');
+                    }
+                    
+                } catch (error) {
+                    log(`❌ 좌표 검증 실패: ${error.message}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function step3_forceVisibleMarker() {
+            log('🔥 3단계: 강제 가시성 마커 생성', 'warning');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    if (!win.AppState?.clickParcels?.size) {
+                        log('❌ 클릭된 필지가 없습니다!', 'error');
+                        return;
+                    }
+                    
+                    const parcels = Array.from(win.AppState.clickParcels.entries());
+                    const [pnu, parcelData] = parcels[0];
+                    const geometry = parcelData.data?.geometry;
+                    
+                    if (!geometry) {
+                        log('❌ 지오메트리 없음', 'error');
+                        return;
+                    }
+                    
+                    // 다양한 스타일로 마커 생성 시도
+                    const coords = geometry.coordinates[0];
+                    let centerLat = 0, centerLng = 0;
+                    coords.forEach(coord => {
+                        centerLat += coord[1];
+                        centerLng += coord[0];
+                    });
+                    centerLat /= coords.length;
+                    centerLng /= coords.length;
+                    
+                    const position = new win.naver.maps.LatLng(centerLat, centerLng);
+                    
+                    // 방법 1: 매우 큰 빨간 원
+                    const bigMarker = new win.naver.maps.Marker({
+                        position: position,
+                        map: win.AppState.map,
+                        icon: {
+                            content: '<div style="width: 50px; height: 50px; background: #ff0000; border-radius: 50%; border: 5px solid white; box-shadow: 0 0 20px rgba(255,0,0,0.8); z-index: 999999 !important; position: absolute !important;"></div>',
+                            anchor: new win.naver.maps.Point(25, 25)
+                        },
+                        zIndex: 999999
+                    });
+                    
+                    log('🔴 방법 1: 큰 빨간 원 마커 생성', 'success');
+                    
+                    setTimeout(() => {
+                        bigMarker.setMap(null);
+                        
+                        // 방법 2: HTML 텍스트 마커
+                        const textMarker = new win.naver.maps.Marker({
+                            position: position,
+                            map: win.AppState.map,
+                            icon: {
+                                content: '<div style="font-size: 24px; color: #ff0000; font-weight: bold; text-shadow: 2px 2px 4px white; z-index: 999999 !important;">🅼 SAVED</div>',
+                                anchor: new win.naver.maps.Point(30, 12)
+                            },
+                            zIndex: 999999
+                        });
+                        
+                        log('🅼 방법 2: 텍스트 마커 생성', 'success');
+                        
+                        setTimeout(() => {
+                            textMarker.setMap(null);
+                            
+                            // 방법 3: 네이버 기본 아이콘
+                            const basicMarker = new win.naver.maps.Marker({
+                                position: position,
+                                map: win.AppState.map,
+                                icon: {
+                                    url: 'data:image/svg+xml;base64,' + btoa('<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#ff0000" stroke="#ffffff" stroke-width="2"/><text x="12" y="16" font-family="Arial" font-size="12" font-weight="bold" text-anchor="middle" fill="#ffffff">M</text></svg>'),
+                                    scaledSize: new win.naver.maps.Size(24, 24),
+                                    anchor: new win.naver.maps.Point(12, 12)
+                                },
+                                zIndex: 999999
+                            });
+                            
+                            log('📍 방법 3: SVG 아이콘 마커 생성', 'success');
+                            
+                            setTimeout(() => {
+                                basicMarker.setMap(null);
+                                log('✅ 모든 테스트 마커 제거 완료', 'info');
+                            }, 5000);
+                            
+                        }, 5000);
+                    }, 5000);
+                    
+                } catch (error) {
+                    log(`❌ 강제 가시성 마커 실패: ${error.message}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function step4_ultimateMarkerTest() {
+            log('🔥 4단계: 궁극 마커 테스트 - 실제 저장 과정 시뮬레이션', 'warning');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    if (!win.AppState?.clickParcels?.size) {
+                        log('❌ 클릭된 필지가 없습니다!', 'error');
+                        return;
+                    }
+                    
+                    // 실제 저장 과정 시뮬레이션
+                    const parcels = Array.from(win.AppState.clickParcels.entries());
+                    const [pnu, parcelData] = parcels[0];
+                    
+                    log(`🎯 실제 저장 과정 테스트: ${pnu}`, 'info');
+                    
+                    // 필지 정보 설정 (저장된 것처럼)
+                    parcelData.data.owner = 'ULTRATHINK 테스트';
+                    parcelData.data.memo = 'M 마커 테스트';
+                    parcelData.data.isSaved = true;
+                    parcelData.hasMarker = true;
+                    
+                    log('📝 필지 정보 설정 완료', 'success');
+                    
+                    // 기존 마커 제거 (있다면)
+                    if (parcelData.marker) {
+                        parcelData.marker.setMap(null);
+                        log('🗑️ 기존 마커 제거', 'info');
+                    }
+                    
+                    // createMMarker 함수 직접 호출
+                    if (typeof win.createMMarker === 'function') {
+                        log('🎯 createMMarker 함수 호출', 'warning');
+                        win.createMMarker(pnu);
+                        
+                        // 결과 확인
+                        setTimeout(() => {
+                            const updatedData = win.AppState.clickParcels.get(pnu);
+                            const hasMarker = !!updatedData.marker;
+                            const isVisible = hasMarker ? updatedData.marker.getMap() !== null : false;
+                            
+                            log(`✅ createMMarker 결과: marker=${hasMarker}, visible=${isVisible}`, hasMarker && isVisible ? 'success' : 'error');
+                            
+                            if (!hasMarker || !isVisible) {
+                                // 수동으로 마커 생성
+                                log('🔧 수동 마커 생성 시도', 'warning');
+                                step4_manualMarkerCreation(win, pnu, parcelData);
+                            }
+                            
+                        }, 1000);
+                        
+                    } else {
+                        log('❌ createMMarker 함수가 없습니다', 'error');
+                        step4_manualMarkerCreation(win, pnu, parcelData);
+                    }
+                    
+                } catch (error) {
+                    log(`❌ 궁극 마커 테스트 실패: ${error.message}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function step4_manualMarkerCreation(win, pnu, parcelData) {
+            try {
+                log('🔧 수동 M 마커 생성', 'warning');
+                
+                const geometry = parcelData.data?.geometry;
+                if (!geometry) {
+                    log('❌ 지오메트리 없음', 'error');
+                    return;
+                }
+                
+                const coords = geometry.coordinates[0];
+                let centerLat = 0, centerLng = 0;
+                coords.forEach(coord => {
+                    centerLat += coord[1];
+                    centerLng += coord[0];
+                });
+                centerLat /= coords.length;
+                centerLng /= coords.length;
+                
+                log(`📍 계산된 중심점: ${centerLat}, ${centerLng}`, 'info');
+                
+                // 수동 마커 생성 (app-core.js와 동일한 방식)
+                const marker = new win.naver.maps.Marker({
+                    position: new win.naver.maps.LatLng(centerLat, centerLng),
+                    map: win.AppState.map,
+                    icon: {
+                        content: '<div style="background: #dc3545; color: white; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-weight: bold; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 1000; cursor: pointer;">M</div>',
+                        anchor: new win.naver.maps.Point(12, 12)
+                    },
+                    zIndex: 1000
+                });
+                
+                // AppState에 저장
+                parcelData.marker = marker;
+                parcelData.memoMarker = marker;
+                parcelData.hasMarker = true;
+                
+                // 클릭 이벤트 추가
+                win.naver.maps.Event.addListener(marker, 'click', function() {
+                    log(`📝 M 마커 클릭됨: ${pnu}`, 'success');
+                    alert(`M 마커 클릭됨!\\n필지: ${parcelData.data?.jibun}\\n소유자: ${parcelData.data?.owner}`);
+                });
+                
+                log('✅ 수동 M 마커 생성 완료!', 'success');
+                log('👀 마커가 보이는지 확인하고 클릭해보세요', 'info');
+                
+                // 30초 후 제거 (테스트용)
+                setTimeout(() => {
+                    if (confirm('테스트 마커를 제거하시겠습니까?')) {
+                        marker.setMap(null);
+                        parcelData.marker = null;
+                        parcelData.memoMarker = null;
+                        parcelData.hasMarker = false;
+                        log('🗑️ 테스트 마커 제거됨', 'info');
+                    }
+                }, 30000);
+                
+            } catch (error) {
+                log(`❌ 수동 마커 생성 실패: ${error.message}`, 'error');
+                log(`스택: ${error.stack}`, 'error');
+            }
+        }
+        
+        function step5_realTimeMonitor() {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
+                log('⏹️ 실시간 모니터링 중지', 'info');
+                return;
+            }
+            
+            log('🔥 5단계: 실시간 모니터링 시작', 'warning');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            monitorInterval = setInterval(() => {
+                try {
+                    if (!win || win.closed || !win.AppState) {
+                        clearInterval(monitorInterval);
+                        monitorInterval = null;
+                        log('❌ 모니터링 중단: 메인 창 없음', 'error');
+                        return;
+                    }
+                    
+                    const parcels = Array.from(win.AppState.clickParcels.entries());
+                    const savedParcels = parcels.filter(([, data]) => data.data?.isSaved);
+                    const markersWithFlag = parcels.filter(([, data]) => data.hasMarker);
+                    const markersWithObject = parcels.filter(([, data]) => data.marker);
+                    const visibleMarkers = parcels.filter(([, data]) => data.marker && data.marker.getMap() !== null);
+                    
+                    // DOM 마커 요소 확인
+                    const domMarkers = win.document.querySelectorAll('[style*="M"],[title*="M"]').length;
+                    const naverMarkers = win.document.querySelectorAll('.naver-marker').length;
+                    
+                    log(`📊 실시간 상태: 필지${parcels.length} | 저장됨${savedParcels.length} | hasMarker${markersWithFlag.length} | marker객체${markersWithObject.length} | 표시됨${visibleMarkers.length} | DOM${domMarkers} | 네이버마커${naverMarkers}`, 'info');
+                    
+                } catch (error) {
+                    log(`❌ 모니터링 오류: ${error.message}`, 'error');
+                }
+            }, 3000);
+            
+            log('✅ 실시간 모니터링 시작됨 (3초 간격)', 'success');
+        }
+        
+        // 초기화
+        log('🔥 ULTRATHINK M 마커 해결 도구 준비 완료!', 'success');
+        log('📋 순서대로 버튼을 클릭하여 진단하세요:', 'info');
+        log('  1️⃣ 기본 마커 테스트 → 2️⃣ 좌표 검증 → 3️⃣ 강제 마커 → 4️⃣ 궁극 테스트', 'info');
+        log('', 'info');
+        log('⚠️ 먼저 메인 페이지에서 필지를 클릭하는 것을 잊지 마세요!', 'warning');
+        
+    </script>
+</body>
+</html>

@@ -26,23 +26,34 @@ function calculatePolygonCenter(coordinates) {
 }
 
 // 필지 하이라이트 함수
-function highlightParcel(parcelData) {
+function highlightParcel(parcelData, customDisplayText) {
     try {
-        console.log('🎨 필지 하이라이트 시작:', parcelData);
+        console.log('🎨 필지 하이라이트 시작');
         
         const geometry = parcelData.geometry;
         const properties = parcelData.properties || {};
         
         if (!geometry || !geometry.coordinates) {
-            console.warn('❌ geometry 또는 coordinates가 없습니다:', geometry);
-            return;
+            console.error('❌ geometry 또는 coordinates가 없습니다:', geometry);
+            return null;
         }
 
-        // formatJibun 함수를 사용하여 지번 포맷팅
-        const displayText = formatJibun(properties);
+        // displayText 결정 - customDisplayText 우선, 없으면 formatJibun 사용
+        let displayText = customDisplayText;
+        if (!displayText) {
+            try {
+                if (typeof formatJibun === 'function') {
+                    displayText = formatJibun(properties);
+                } else {
+                    displayText = properties.JIBUN || properties.jibun || '지번미상';
+                }
+            } catch (error) {
+                console.error('💥 formatJibun 에러:', error);
+                displayText = properties.JIBUN || properties.jibun || '지번미상';
+            }
+        }
         
         console.log('🏠 포맷된 지번:', displayText);
-        console.log('📄 전체 properties:', properties);
 
         // 좌표 변환
         let paths = [];
@@ -68,53 +79,104 @@ function highlightParcel(parcelData) {
         const highlightPolygon = new naver.maps.Polygon({
             paths: paths,
             fillColor: '#9370DB', // 보라색 (Medium Purple)
-            fillOpacity: 0.7,
+            fillOpacity: 0.9, // 0.8 → 0.9로 더욱 진하게 (거의 불투명)
             strokeColor: '#6A0DAD', // 진한 보라색 테두리
             strokeWeight: 3,
             strokeOpacity: 1.0,
             map: window.map
         });
 
-        console.log('✅ 형광색 폴리곤 생성 완료');
+        console.log('✅ 보라색 폴리곤 생성 완료');
         console.log('🔍 폴리곤 paths 확인:', highlightPolygon.getPaths());
         
         // 강제로 지도에 다시 설정
         highlightPolygon.setMap(window.map);
         console.log('🔄 폴리곤을 지도에 강제 설정 완료');
         
-        // 폴리곤 중심에 라벨 표시 - 검은 글씨
-        const coordsForCenter = geometry.type === 'Polygon' ? geometry.coordinates[0] : geometry.coordinates[0][0];
-        const center = calculatePolygonCenter(coordsForCenter);
-        console.log('📍 라벨 중심점:', center);
+        // 🎯 ULTRATHINK: 검색 폴리곤 스타일 보호 - 다른 시스템이 덮어쓰지 못하도록
+        setTimeout(() => {
+            highlightPolygon.setOptions({
+                fillColor: '#9370DB',
+                fillOpacity: 0.9, // 최대한 진하게
+                strokeColor: '#6A0DAD',
+                strokeWeight: 3,
+                strokeOpacity: 1.0
+            });
+            console.log('🛡️ 검색 폴리곤 스타일 보호 적용 완료 (fillOpacity: 0.9)');
+        }, 100);
         
-        const label = new naver.maps.Marker({
-            position: new naver.maps.LatLng(center[1], center[0]),
-            map: window.map, // 항상 표시
-            icon: {
-                content: `<div style="
-                    padding: 8px 12px; 
-                    background: rgba(255, 255, 255, 0.95); 
-                    border: 2px solid #9370DB; 
-                    border-radius: 6px; 
-                    font-weight: bold; 
-                    font-size: 13px; 
-                    color: #6A0DAD; 
-                    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
-                    box-shadow: 0 3px 8px rgba(106,13,173,0.3);
-                    white-space: nowrap;
-                    animation: searchPulse 2s ease-in-out infinite;
-                ">${displayText}</div>
-                <style>
-                    @keyframes searchPulse {
-                        0%, 100% { transform: scale(1); }
-                        50% { transform: scale(1.05); }
-                    }
-                </style>`,
-                anchor: new naver.maps.Point(0, 0)
+        // 🎯 ULTRATHINK: 추가 보호 - 1초 후 다시 한번 강제 적용
+        setTimeout(() => {
+            highlightPolygon.setOptions({
+                fillColor: '#9370DB',
+                fillOpacity: 0.9,
+                strokeColor: '#6A0DAD',
+                strokeWeight: 3,
+                strokeOpacity: 1.0
+            });
+            console.log('🛡️ 검색 폴리곤 추가 보호 적용 완료');
+        }, 1000);
+        
+        // 검색 필지 라벨 생성
+        let label = null;
+        try {
+            if (!displayText || displayText.trim() === '') {
+                console.warn('⚠️ displayText가 비어있어 라벨을 생성하지 않습니다');
+                return null;
             }
-        });
-
-        console.log('✅ 라벨 생성 완료:', displayText);
+            
+            // 좌표 계산
+            const coordsForCenter = geometry.type === 'Polygon' ? geometry.coordinates[0] : geometry.coordinates[0][0];
+            let center = calculatePolygonCenter(coordsForCenter);
+            
+            // 중심점 fallback
+            if (!center || center[0] === 0 || center[1] === 0) {
+                center = [coordsForCenter[0][0], coordsForCenter[0][1]];
+            }
+            
+            // 4단계: 보라색 검색 라벨 생성
+            label = new naver.maps.Marker({
+                position: new naver.maps.LatLng(center[1], center[0]),
+                map: window.map,
+                icon: {
+                    content: `<div style="
+                        background: white;
+                        color: #9370DB;
+                        padding: 6px 12px;
+                        border: 3px solid #9370DB;
+                        font-size: 13px;
+                        font-weight: bold;
+                        border-radius: 8px;
+                        position: relative;
+                        z-index: 10000;
+                        box-shadow: 0 3px 10px rgba(147,112,219,0.4);
+                        white-space: nowrap;
+                        min-width: 60px;
+                        text-align: center;
+                        animation: searchGlow 2s ease-in-out infinite alternate;
+                    ">${displayText}</div>
+                    <style>
+                        @keyframes searchGlow {
+                            0% { box-shadow: 0 3px 10px rgba(147,112,219,0.4); }
+                            100% { box-shadow: 0 5px 15px rgba(147,112,219,0.7); }
+                        }
+                    </style>`,
+                    anchor: new naver.maps.Point(0, 35)
+                }
+            });
+            
+            console.log('✅ 검색 라벨 생성 완료:', displayText);
+            
+            // 강제 지도 설정
+            if (label && window.map) {
+                label.setMap(window.map);
+            }
+            
+        } catch (error) {
+            console.error('💥 라벨 생성 중 에러:', error);
+            console.error('💥 에러 스택:', error.stack);
+            label = null;
+        }
 
         // window.searchParcels에 저장
         const pnu = properties.PNU || properties.pnu || `search_${Date.now()}_${Math.random()}`;
@@ -132,6 +194,27 @@ function highlightParcel(parcelData) {
         // currentSelectedPNU 설정 (저장 시 검색 필지로 인식되도록)
         window.currentSelectedPNU = pnu;
         console.log('📌 currentSelectedPNU 설정:', pnu);
+
+        // 🎯 ULTRATHINK: sessionStorage에 검색 필지 저장 (새로고침 유지용)
+        try {
+            const sessionData = JSON.parse(sessionStorage.getItem('searchParcels') || '{}');
+            const saveData = {
+                data: parcelData,
+                geometry: parcelData.geometry,
+                properties: parcelData.properties,
+                displayText: displayText,
+                timestamp: Date.now()
+            };
+            sessionData[pnu] = saveData;
+            sessionStorage.setItem('searchParcels', JSON.stringify(sessionData));
+            
+            console.log('💾 ULTRATHINK: sessionStorage에 검색 필지 저장 완료');
+            console.log('📝 저장된 PNU:', pnu);
+            console.log('📝 저장된 데이터:', saveData);
+            console.log('📝 전체 sessionStorage 크기:', Object.keys(sessionData).length);
+        } catch (error) {
+            console.error('❌ sessionStorage 저장 실패:', error);
+        }
 
         // localStorage에 저장
         saveSearchResultsToStorage();
@@ -272,6 +355,10 @@ function clearSearchResults() {
         }
         console.log('🧹 검색 결과 지도에서 제거 완료');
         
+        // 🎯 ULTRATHINK: sessionStorage는 보존 (새로고침 시 복원용)
+        // sessionStorage.removeItem('searchParcels'); // 주석 처리
+        console.log('💾 ULTRATHINK: sessionStorage는 보존됨 (새로고침 복원용)');
+        
         // 🎯 ULTRATHINK: ParcelManager UI 제거됨 - Supabase + Google Sheets 2중 백업만 사용
         // UI 동기화 불필요 - 데이터는 자동으로 클라우드에 백업됨
         
@@ -302,6 +389,182 @@ function removeSearchResultsFromStorage() {
     }
 }
 
+// 🎯 ULTRATHINK: sessionStorage에서 검색 필지 복원 함수
+function restoreSearchParcelsFromSession() {
+    try {
+        console.log('🟣 ULTRATHINK: 검색 필지 복원 함수 시작');
+        
+        // 1단계: 필수 의존성 체크
+        if (!window.map) {
+            console.error('❌ window.map이 준비되지 않음');
+            return;
+        }
+        if (typeof formatJibun !== 'function') {
+            console.error('❌ formatJibun 함수가 준비되지 않음');
+            return;
+        }
+        if (!window.searchParcels) {
+            console.error('❌ window.searchParcels가 준비되지 않음');
+            return;
+        }
+        
+        console.log('✅ 모든 의존성 준비 완료');
+        console.log('📊 현재 모드:', window.currentMode);
+        console.log('🗺️ 지도 객체:', window.map);
+        
+        // 2단계: sessionStorage에서 데이터 로드
+        const searchData = JSON.parse(sessionStorage.getItem('searchParcels') || '{}');
+        const searchKeys = Object.keys(searchData);
+        
+        console.log('💾 sessionStorage 데이터:', searchData);
+        
+        if (searchKeys.length === 0) {
+            console.log('💾 ULTRATHINK: 복원할 검색 필지가 없음');
+            return;
+        }
+        
+        console.log(`🟣 ULTRATHINK: ${searchKeys.length}개 검색 필지 복원 시작`);
+        
+        let restoredCount = 0;
+        searchKeys.forEach(pnu => {
+            const parcel = searchData[pnu];
+            
+            console.log(`🔄 복원 시도: PNU ${pnu}`, parcel);
+            
+            if (!parcel || !parcel.geometry) {
+                console.warn(`⚠️ 검색 필지 데이터 누락: ${pnu}`);
+                return;
+            }
+            
+            try {
+                // 3단계: 폴리곤 좌표 생성
+                const coords = parcel.geometry.coordinates[0].map(coord => 
+                    new naver.maps.LatLng(coord[1], coord[0])
+                );
+                
+                console.log(`📍 폴리곤 좌표 생성: ${coords.length}개`);
+                
+                // 4단계: 보라색 폴리곤 생성 (항상 지도에 표시)
+                const polygon = new naver.maps.Polygon({
+                    map: window.map, // 현재 모드와 관계없이 항상 표시
+                    paths: coords,
+                    fillColor: '#9370DB',
+                    fillOpacity: 0.9, // 0.8 → 0.9로 더욱 진하게
+                    strokeColor: '#6A0DAD',
+                    strokeOpacity: 1,
+                    strokeWeight: 2
+                });
+                
+                console.log('🟣 보라색 폴리곤 생성 완료');
+                
+                // 🎯 ULTRATHINK: 복원된 검색 폴리곤 스타일 보호
+                setTimeout(() => {
+                    polygon.setOptions({
+                        fillColor: '#9370DB',
+                        fillOpacity: 0.9, // 최대한 진하게
+                        strokeColor: '#6A0DAD',
+                        strokeWeight: 2,
+                        strokeOpacity: 1
+                    });
+                    console.log('🛡️ 복원된 검색 폴리곤 스타일 보호 적용 완료 (fillOpacity: 0.9)');
+                }, 100);
+                
+                // 🎯 ULTRATHINK: 복원 후 추가 보호 - 1초 후 다시 한번 강제 적용
+                setTimeout(() => {
+                    polygon.setOptions({
+                        fillColor: '#9370DB',
+                        fillOpacity: 0.9,
+                        strokeColor: '#6A0DAD',
+                        strokeWeight: 2,
+                        strokeOpacity: 1
+                    });
+                    console.log('🛡️ 복원된 검색 폴리곤 추가 보호 적용 완료');
+                }, 1000);
+                
+                // 복원된 검색 라벨 생성
+                const displayText = parcel.displayText || (parcel.properties ? formatJibun(parcel.properties) : '지번미상');
+                let label = null;
+                
+                try {
+                    if (displayText && displayText !== '지번미상') {
+                        const bounds = new naver.maps.LatLngBounds();
+                        coords.forEach(coord => bounds.extend(coord));
+                        const center = bounds.getCenter();
+                        
+                        if (center) {
+                            label = new naver.maps.Marker({
+                                position: center,
+                                map: window.map,
+                                icon: {
+                                    content: `<div style="
+                                        background: white;
+                                        color: #9370DB;
+                                        padding: 6px 12px;
+                                        border: 3px solid #9370DB;
+                                        font-size: 13px;
+                                        font-weight: bold;
+                                        border-radius: 8px;
+                                        position: relative;
+                                        z-index: 10000;
+                                        box-shadow: 0 3px 10px rgba(147,112,219,0.4);
+                                        white-space: nowrap;
+                                        min-width: 60px;
+                                        text-align: center;
+                                        animation: searchGlow 2s ease-in-out infinite alternate;
+                                    ">${displayText}</div>
+                                    <style>
+                                        @keyframes searchGlow {
+                                            0% { box-shadow: 0 3px 10px rgba(147,112,219,0.4); }
+                                            100% { box-shadow: 0 5px 15px rgba(147,112,219,0.7); }
+                                        }
+                                    </style>`,
+                                    anchor: new naver.maps.Point(0, 35)
+                                }
+                            });
+                            
+                            console.log('✅ 복원 라벨 생성 완료:', displayText);
+                            
+                            if (label && window.map) {
+                                label.setMap(window.map);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('💥 복원 라벨 생성 중 에러:', error);
+                    label = null;
+                }
+                
+                // 6단계: window.searchParcels에 저장
+                window.searchParcels.set(pnu, {
+                    pnu: pnu,
+                    polygon: polygon,
+                    label: label,
+                    data: parcel.data,
+                    displayText: displayText,
+                    color: '#9370DB'
+                });
+                
+                restoredCount++;
+                console.log(`✨ 검색 필지 복원 성공: ${displayText} (PNU: ${pnu})`);
+                
+            } catch (error) {
+                console.error(`❌ 검색 필지 복원 실패: ${pnu}`, error);
+            }
+        });
+        
+        console.log(`🟣 ULTRATHINK: 검색 필지 복원 완료 - ${restoredCount}/${searchKeys.length}개 성공`);
+        
+        // 7단계: 복원된 검색 필지들을 localStorage에도 다시 저장
+        if (restoredCount > 0) {
+            console.log('💾 localStorage에 복원된 데이터 저장 시작');
+            saveSearchResultsToStorage();
+        }
+        
+    } catch (error) {
+        console.error('❌ ULTRATHINK: 검색 필지 복원 중 오류:', error);
+    }
+}
+
 // 검색 모드는 window.currentMode를 사용 ('search' 또는 'click')
 // 초기값은 config.js에서 설정됨
 
@@ -319,7 +582,55 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     console.log('🎯 검색 관련 이벤트 리스너 설정 완료');
+    
+    // 🎯 ULTRATHINK: 지도 준비 후 검색 필지 복원 (DOMContentLoaded에서)
+    const waitForMapAndRestoreDOM = () => {
+        if (window.map && typeof window.map === 'object' && typeof formatJibun === 'function') {
+            console.log('🗺️ DOMContentLoaded: 지도 객체 준비 완료, 검색 필지 복원 시작');
+            setTimeout(() => {
+                restoreSearchParcelsFromSession();
+            }, 500);
+        } else {
+            console.log('⏳ DOMContentLoaded: 지도 객체 대기 중...');
+            setTimeout(waitForMapAndRestoreDOM, 300);
+        }
+    };
+    
+    // DOMContentLoaded에서 첫 번째 복원 시도
+    setTimeout(waitForMapAndRestoreDOM, 1500);
 });
+
+// 🎯 ULTRATHINK: window load 이벤트에서 백업 복원 시도
+window.addEventListener('load', function() {
+    console.log('🔄 window load: 검색 필지 복원 백업 시도');
+    
+    const waitForMapAndRestoreLoad = () => {
+        if (window.map && typeof window.map === 'object' && typeof formatJibun === 'function' && window.searchParcels) {
+            console.log('🗺️ window load: 모든 준비 완료, 검색 필지 복원 시작');
+            setTimeout(() => {
+                // 이미 복원된 필지가 있는지 확인
+                if (window.searchParcels.size === 0) {
+                    console.log('🔄 기존 복원이 실패했거나 없음, 백업 복원 수행');
+                    restoreSearchParcelsFromSession();
+                } else {
+                    console.log('✅ 이미 복원된 검색 필지 있음:', window.searchParcels.size + '개');
+                }
+            }, 1000);
+        } else {
+            console.log('⏳ window load: 의존성 대기 중...');
+            setTimeout(waitForMapAndRestoreLoad, 500);
+        }
+    };
+    
+    setTimeout(waitForMapAndRestoreLoad, 2000); // window load에서는 조금 더 지연
+});
+
+// 🎯 ULTRATHINK: 전역 함수로 등록하여 개발자 콘솔에서 테스트 가능
+window.restoreSearchParcelsFromSession = restoreSearchParcelsFromSession;
+window.testSearchRestore = function() {
+    console.log('🧪 테스트: 강제 검색 필지 복원 시도');
+    restoreSearchParcelsFromSession();
+};
 
 // 전역 변수로 interval 저장
 let checkMapInterval = null;
@@ -327,65 +638,75 @@ let checkMapInterval = null;
 // 기존 필지 색상 저장용
 let hiddenParcels = [];
 
-// 검색 모드 토글 기능 (전역 함수로 변경)
+// 🎯 ULTRATHINK: search.js의 toggleSearchMode (app-core.js 함수 호출)
 function toggleSearchMode() {
-    console.log('=== toggleSearchMode 시작 ===');
-    console.log('현재 currentMode:', window.currentMode);
-    console.log('clickParcels 상태:', window.clickParcels.size, '개');
-    console.log('searchParcels 상태:', window.searchParcels.size, '개');
+    console.log('🔄 SEARCH.JS toggleSearchMode 시작');
     
-    // 모드 전환
-    window.currentMode = (window.currentMode === 'search') ? 'click' : 'search';
     const toggleBtn = document.getElementById('searchToggleBtn');
-    
-    console.log('새 currentMode:', window.currentMode);
-    console.log('toggleBtn 요소:', toggleBtn);
-    
     if (!toggleBtn) {
-        console.error('toggleBtn 요소를 찾을 수 없음!');
+        console.error('❌ 검색 토글 버튼을 찾을 수 없음');
         return;
     }
     
+    // 현재 모드 전환
+    window.currentMode = (window.currentMode === 'search') ? 'click' : 'search';
+    
     if (window.currentMode === 'search') {
-        // 검색 모드: 클릭 필지 숨기고 검색 필지 표시
+        // 🎯 검색 ON: 클릭 필지 숨기고 검색 필지 표시
         toggleBtn.textContent = '검색 ON';
         toggleBtn.classList.add('active');
         
-        console.log('>> 검색 ON 모드로 전환');
+        console.log('🔍 검색 ON: app-core.js hideClickParcels 호출');
+        if (window.AppCore && window.AppCore.hideClickParcels) {
+            window.AppCore.hideClickParcels();
+        } else if (typeof window.hideClickParcels === 'function') {
+            window.hideClickParcels();
+        }
         
-        // 클릭 필지 숨기기
-        console.log('클릭 필지 숨기기 시작...');
-        window.hideClickParcels();
-        console.log('클릭 필지 숨기기 완료');
+        console.log('🔍 검색 ON: app-core.js showSearchParcels 호출');
+        if (window.AppCore && window.AppCore.showSearchParcels) {
+            window.AppCore.showSearchParcels();
+        } else if (typeof window.showSearchParcels === 'function') {
+            window.showSearchParcels();
+        }
         
-        // 검색 필지 표시  
-        console.log('검색 필지 표시 시작...');
-        window.showSearchParcels();
-        console.log('검색 필지 표시 완료');
+        if (window.AppState) {
+            window.AppState.searchMode = true;
+        }
+        
+        console.log('✅ 검색 ON 완료');
         
     } else {
-        // 클릭 모드: 검색 필지 숨기고 클릭 필지 표시
+        // 🎯 검색 OFF: 검색 필지 숨기고 클릭 필지 표시
         toggleBtn.textContent = '검색 OFF';
         toggleBtn.classList.remove('active');
         
-        console.log('>> 검색 OFF (클릭) 모드로 전환');
+        console.log('🖱️ 검색 OFF: app-core.js hideSearchParcels 호출');
+        if (window.AppCore && window.AppCore.hideSearchParcels) {
+            window.AppCore.hideSearchParcels();
+        } else if (typeof window.hideSearchParcels === 'function') {
+            window.hideSearchParcels();
+        }
         
-        // 검색 필지 숨기기
-        console.log('검색 필지 숨기기 시작...');
-        window.hideSearchParcels();
-        console.log('검색 필지 숨기기 완료');
+        console.log('🖱️ 검색 OFF: app-core.js showClickParcels 호출');
+        if (window.AppCore && window.AppCore.showClickParcels) {
+            window.AppCore.showClickParcels();
+        } else if (typeof window.showClickParcels === 'function') {
+            window.showClickParcels();
+        }
         
-        // 클릭 필지 표시
-        console.log('클릭 필지 표시 시작...');
-        window.showClickParcels();
-        console.log('클릭 필지 표시 완료');
+        if (window.AppState) {
+            window.AppState.searchMode = false;
+        }
+        
+        console.log('✅ 검색 OFF 완료');
     }
     
-    console.log('=== toggleSearchMode 완료 ===');
+    // localStorage 저장
+    if (typeof window.saveToLocalStorage === 'function') {
+        window.saveToLocalStorage();
+    }
 }
-
-// window 객체에도 연결 (호환성 유지)
-window.toggleSearchMode = toggleSearchMode;
 
 // 검색 결과 보이기
 function showSearchResults() {

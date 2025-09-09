@@ -38,7 +38,7 @@
                 <div class="search-container">
                     <input type="text" id="searchInput" placeholder="지번 또는 주소 검색">
                     <button id="searchBtn">검색</button>
-                    <button id="searchToggleBtn" class="search-toggle-btn" title="검색 모드 on/off" onclick="toggleSearchMode()">
+                    <button id="searchToggleBtn" class="search-toggle-btn" title="검색 모드 on/off">
                         검색 OFF
                     </button>
                 </div>
@@ -69,13 +69,13 @@
                 <div class="panel-header">
                     <h3>필지 색상</h3>
                     <!-- 🎯 ULTRATHINK: 필지 색칠 on/off 버튼 -->
-                    <button id="paintModeToggle" class="paint-toggle-btn active" title="필지 색칠 모드 토글">
+                    <button id="paintToggleBtn" class="paint-toggle-btn active" title="필지 색칠 모드 토글">
                         <span class="toggle-icon">🎨</span>
                         <span class="toggle-text">색칠 ON</span>
                     </button>
                 </div>
                 <div class="color-palette">
-                    <div class="color-item" data-color="#FF0000" style="background: #FF0000"></div>
+                    <div class="color-item active" data-color="#FF0000" style="background: #FF0000"></div>
                     <div class="color-item" data-color="#FFA500" style="background: #FFA500"></div>
                     <div class="color-item" data-color="#FFFF00" style="background: #FFFF00"></div>
                     <div class="color-item" data-color="#90EE90" style="background: #90EE90"></div>
@@ -88,14 +88,7 @@
                     <span>선택된 색상:</span>
                     <div id="currentColor" style="background: #FF0000"></div>
                 </div>
-                <div class="color-actions">
-                    <button type="button" id="clearSelectedBtn">
-                        선택 초기화
-                    </button>
-                    <button type="button" id="clearSearchBtn">
-                        검색 초기화
-                    </button>
-                </div>
+                <!-- 초기화 버튼들 제거 - 우클릭이 유일한 삭제 방법 -->
             </div>
 
             <!-- 필지 정보 입력 -->
@@ -124,7 +117,7 @@
                     </div>
                     <div class="form-buttons">
                         <button type="button" id="saveBtn">저장</button>
-                        <button type="button" id="clearBtn">초기화</button>
+                        <!-- 초기화 버튼 제거 - 우클릭이 유일한 삭제 방법 -->
                     </div>
                     <div class="export-buttons">
                         <button type="button" id="exportCurrentBtn" onclick="exportCurrentParcelToGoogleSheets()">
@@ -218,8 +211,10 @@
             console.log('DOMContentLoaded event');
         });
     </script>
+    <!-- 🎯 ULTRATHINK: 새로운 통합 코어 시스템을 최우선 로드 -->
+    <script src="/js/app-core.js"></script>
     <script src="/js/config-client.js"></script>
-    <script src="/js/config-loader.js"></script>
+    <script src="/js/config.js"></script>
     <script src="/js/rate-limiter.js"></script>
     <script src="/js/virtual-scroller.js"></script>
     <script src="/js/viewport-renderer.js"></script>
@@ -233,6 +228,7 @@
     <script src="/js/utils.js"></script>
     <script src="/js/calendar.js"></script>
     <script src="/js/map.js"></script>
+    <script src="/js/map-init.js"></script>
     <script src="/js/parcel.js"></script>
     <script src="/js/parcel-manager.js"></script>
     <script src="/js/search.js"></script>

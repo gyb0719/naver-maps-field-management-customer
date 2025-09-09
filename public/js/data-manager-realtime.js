@@ -381,16 +381,31 @@ class RealtimeDataManager extends DataManager {
         try {
             // 색상 업데이트
             if (parcel.color) {
-                const fillOpacity = window.paintModeEnabled ? 0.3 : 0;
-                const strokeOpacity = window.paintModeEnabled ? 0.8 : 0;
+                // 🎯 ULTRATHINK: 검색 필지는 페인트 모드와 관계없이 항상 보라색으로 표시
+                const isSearchParcel = window.searchParcels && window.searchParcels.has(pnu);
                 
-                data.polygon.setOptions({
-                    fillColor: parcel.color,
-                    fillOpacity: fillOpacity,
-                    strokeColor: parcel.color,
-                    strokeOpacity: strokeOpacity,
-                    strokeWeight: 2
-                });
+                if (isSearchParcel) {
+                    // 검색 필지는 항상 보라색으로 유지
+                    data.polygon.setOptions({
+                        fillColor: '#9370DB',
+                        fillOpacity: 0.9, // 0.8 → 0.9로 더욱 진하게
+                        strokeColor: '#6A0DAD',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 3
+                    });
+                } else {
+                    // 일반 필지는 기존 로직 적용
+                    const fillOpacity = window.paintModeEnabled ? 0.3 : 0;
+                    const strokeOpacity = window.paintModeEnabled ? 0.8 : 0;
+                    
+                    data.polygon.setOptions({
+                        fillColor: parcel.color,
+                        fillOpacity: fillOpacity,
+                        strokeColor: parcel.color,
+                        strokeOpacity: strokeOpacity,
+                        strokeWeight: 2
+                    });
+                }
                 
                 data.color = parcel.color;
                 console.log(`✅ ${source}에서 필지 색상 업데이트: ${parcel.parcelNumber} → ${parcel.color}`);

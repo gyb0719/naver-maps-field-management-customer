@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎯 M 마커 디버깅 도구</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: 'Courier New', monospace; margin: 20px; background: #f5f5f5; }
+        .debug-panel { background: white; padding: 20px; border-radius: 8px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .error { color: #dc3545; font-weight: bold; }
+        .success { color: #28a745; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+        .step { border-left: 4px solid #007bff; padding-left: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🎯 M 마커 디버깅 도구 - THINK HARD</h1>
+    
+    <div class="debug-panel">
+        <h3>📋 단계별 디버깅</h3>
+        <button class="btn-primary" onclick="step1_checkBasicState()">1️⃣ 기본 상태 확인</button>
+        <button class="btn-primary" onclick="step2_checkParcelData()">2️⃣ 필지 데이터 확인</button>
+        <button class="btn-primary" onclick="step3_testSaveProcess()">3️⃣ 저장 과정 테스트</button>
+        <button class="btn-primary" onclick="step4_forceCreateMarker()">4️⃣ 강제 M 마커 생성</button>
+        <button class="btn-warning" onclick="step5_scanAllMarkers()">5️⃣ 모든 마커 스캔</button>
+        <button class="btn-danger" onclick="clearDebug()">🔄 클리어</button>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>📊 실시간 모니터링</h3>
+        <button class="btn-success" onclick="startMonitoring()">🔍 모니터링 시작</button>
+        <button class="btn-warning" onclick="stopMonitoring()">⏹️ 모니터링 중지</button>
+        <div id="monitoring-status"></div>
+    </div>
+    
+    <div class="debug-panel">
+        <h3>🔍 결과</h3>
+        <pre id="debug-output"></pre>
+    </div>
+    
+    <script>
+        let monitoringInterval = null;
+        let mainWindow = null;
+        
+        function log(message, type = 'info') {
+            const output = document.getElementById('debug-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            output.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearDebug() {
+            document.getElementById('debug-output').textContent = '';
+            document.getElementById('monitoring-status').textContent = '';
+        }
+        
+        function getMainWindow() {
+            if (!mainWindow || mainWindow.closed) {
+                // 새 창에서 메인 페이지 열기
+                mainWindow = window.open('http://localhost:3000', 'mainApp', 'width=1200,height=800');
+                log('메인 페이지를 새 창에서 열었습니다. 4초 후 테스트를 진행합니다.', 'warning');
+                return null;
+            }
+            return mainWindow;
+        }
+        
+        function step1_checkBasicState() {
+            log('🎯 1단계: 기본 상태 확인 시작', 'info');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    // AppState 확인
+                    if (win.AppState) {
+                        log('✅ AppState 존재', 'success');
+                        log(`📍 지도 객체: ${!!win.AppState.map}`, 'info');
+                        log(`📊 클릭 필지 수: ${win.AppState.clickParcels?.size || 0}`, 'info');
+                        log(`🎨 색칠 모드: ${win.AppState.paintMode}`, 'info');
+                        log(`🔍 검색 모드: ${win.AppState.searchMode}`, 'info');
+                        
+                        // 필수 함수 확인
+                        const functions = ['saveCurrentParcel', 'createMMarker', 'handleMapLeftClick'];
+                        functions.forEach(func => {
+                            const exists = typeof win[func] === 'function';
+                            log(`${exists ? '✅' : '❌'} ${func} 함수: ${exists}`, exists ? 'success' : 'error');
+                        });
+                        
+                    } else {
+                        log('❌ AppState가 없습니다!', 'error');
+                    }
+                } catch (error) {
+                    log(`❌ 기본 상태 확인 실패: ${error.message}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function step2_checkParcelData() {
+            log('🎯 2단계: 필지 데이터 확인 시작', 'info');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    if (!win.AppState || !win.AppState.clickParcels) {
+                        log('❌ AppState.clickParcels가 없습니다!', 'error');
+                        return;
+                    }
+                    
+                    const parcels = Array.from(win.AppState.clickParcels.entries());
+                    log(`📋 전체 클릭 필지 수: ${parcels.length}`, 'info');
+                    
+                    parcels.forEach(([pnu, parcelData], index) => {
+                        log(`\\n--- 필지 ${index + 1}: ${pnu} ---`, 'info');
+                        log(`  📝 지번: ${parcelData.data?.jibun || 'N/A'}`, 'info');
+                        log(`  💾 저장됨: ${parcelData.data?.isSaved || false}`, parcelData.data?.isSaved ? 'success' : 'warning');
+                        log(`  🅼 마커 플래그: ${parcelData.hasMarker || false}`, parcelData.hasMarker ? 'success' : 'warning');
+                        log(`  🅼 마커 객체: ${!!parcelData.marker}`, parcelData.marker ? 'success' : 'error');
+                        log(`  📐 지오메트리: ${!!parcelData.data?.geometry}`, parcelData.data?.geometry ? 'success' : 'error');
+                        
+                        if (parcelData.marker) {
+                            const isVisible = parcelData.marker.getMap() !== null;
+                            log(`  👁️ 마커 표시됨: ${isVisible}`, isVisible ? 'success' : 'error');
+                        }
+                    });
+                    
+                } catch (error) {
+                    log(`❌ 필지 데이터 확인 실패: ${error.message}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function step3_testSaveProcess() {
+            log('🎯 3단계: 저장 과정 테스트 시작', 'info');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    // 저장할 필지가 있는지 확인
+                    if (!win.AppState.currentSelectedParcel) {
+                        log('❌ 현재 선택된 필지가 없습니다. 먼저 필지를 클릭하세요.', 'error');
+                        return;
+                    }
+                    
+                    const parcelPNU = win.AppState.currentSelectedParcel;
+                    const parcelData = win.AppState.clickParcels.get(parcelPNU);
+                    
+                    log(`📍 선택된 필지: ${parcelPNU}`, 'info');
+                    log(`📝 지번: ${parcelData?.data?.jibun}`, 'info');
+                    
+                    // 임시 정보 입력
+                    const ownerInput = win.document.getElementById('ownerName');
+                    const memoInput = win.document.getElementById('memo');
+                    
+                    if (ownerInput) ownerInput.value = '디버그 테스트';
+                    if (memoInput) memoInput.value = 'M 마커 테스트';
+                    
+                    log('📝 임시 정보 입력 완료', 'success');
+                    
+                    // 저장 전 상태 기록
+                    const beforeSave = {
+                        isSaved: parcelData?.data?.isSaved || false,
+                        hasMarker: parcelData?.hasMarker || false,
+                        markerExists: !!parcelData?.marker
+                    };
+                    
+                    log('💾 저장 전 상태:', 'info');
+                    log(`  - isSaved: ${beforeSave.isSaved}`, 'info');
+                    log(`  - hasMarker: ${beforeSave.hasMarker}`, 'info');
+                    log(`  - markerExists: ${beforeSave.markerExists}`, 'info');
+                    
+                    // 저장 실행
+                    log('💾 저장 실행...', 'warning');
+                    win.saveCurrentParcel();
+                    
+                    // 저장 후 상태 확인 (1초 후)
+                    setTimeout(() => {
+                        const afterParcelData = win.AppState.clickParcels.get(parcelPNU);
+                        const afterSave = {
+                            isSaved: afterParcelData?.data?.isSaved || false,
+                            hasMarker: afterParcelData?.hasMarker || false,
+                            markerExists: !!afterParcelData?.marker
+                        };
+                        
+                        log('💾 저장 후 상태:', 'info');
+                        log(`  - isSaved: ${afterSave.isSaved} (${beforeSave.isSaved} → ${afterSave.isSaved})`, afterSave.isSaved ? 'success' : 'error');
+                        log(`  - hasMarker: ${afterSave.hasMarker} (${beforeSave.hasMarker} → ${afterSave.hasMarker})`, afterSave.hasMarker ? 'success' : 'error');
+                        log(`  - markerExists: ${afterSave.markerExists} (${beforeSave.markerExists} → ${afterSave.markerExists})`, afterSave.markerExists ? 'success' : 'error');
+                        
+                        if (afterParcelData?.marker) {
+                            const isVisible = afterParcelData.marker.getMap() !== null;
+                            log(`  - 마커 표시됨: ${isVisible}`, isVisible ? 'success' : 'error');
+                        }
+                        
+                        // 결론
+                        if (afterSave.isSaved && afterSave.hasMarker && afterSave.markerExists) {
+                            log('🎉 저장 및 M 마커 생성 성공!', 'success');
+                        } else {
+                            log('❌ 저장 또는 M 마커 생성 실패!', 'error');
+                        }
+                        
+                    }, 1000);
+                    
+                } catch (error) {
+                    log(`❌ 저장 과정 테스트 실패: ${error.message}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function step4_forceCreateMarker() {
+            log('🎯 4단계: 강제 M 마커 생성 시작', 'info');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    const parcels = Array.from(win.AppState.clickParcels.entries());
+                    if (parcels.length === 0) {
+                        log('❌ 클릭된 필지가 없습니다. 먼저 필지를 클릭하세요.', 'error');
+                        return;
+                    }
+                    
+                    // 첫 번째 필지에 강제로 M 마커 생성
+                    const [pnu, parcelData] = parcels[0];
+                    
+                    log(`🅼 강제 M 마커 생성 시도: ${pnu}`, 'warning');
+                    log(`  - 지번: ${parcelData.data?.jibun}`, 'info');
+                    log(`  - 지오메트리: ${!!parcelData.data?.geometry}`, 'info');
+                    
+                    // 기존 마커 확인
+                    if (parcelData.marker) {
+                        log('🗑️ 기존 마커 제거', 'warning');
+                        parcelData.marker.setMap(null);
+                    }
+                    
+                    // createMMarker 직접 호출
+                    win.createMMarker(pnu);
+                    
+                    // 결과 확인
+                    setTimeout(() => {
+                        const updatedData = win.AppState.clickParcels.get(pnu);
+                        const success = updatedData?.marker && updatedData.marker.getMap() !== null;
+                        
+                        log(`🅼 강제 M 마커 생성 결과: ${success ? '성공' : '실패'}`, success ? 'success' : 'error');
+                        
+                        if (success) {
+                            log('✅ M 마커가 성공적으로 생성되었습니다!', 'success');
+                        } else {
+                            log('❌ M 마커 생성에 실패했습니다.', 'error');
+                            
+                            // 실패 원인 분석
+                            if (!updatedData?.data?.geometry) {
+                                log('  원인: 지오메트리 데이터 없음', 'error');
+                            } else if (!win.AppState.map) {
+                                log('  원인: 지도 객체 없음', 'error');
+                            } else {
+                                log('  원인: 알 수 없는 오류', 'error');
+                            }
+                        }
+                        
+                    }, 500);
+                    
+                } catch (error) {
+                    log(`❌ 강제 M 마커 생성 실패: ${error.message}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function step5_scanAllMarkers() {
+            log('🎯 5단계: 모든 마커 스캔 시작', 'info');
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            setTimeout(() => {
+                try {
+                    // DOM에서 M 마커 요소 찾기
+                    const markerElements = win.document.querySelectorAll('[style*="M"][style*="background"]');
+                    log(`🔍 DOM에서 발견된 M 마커 요소: ${markerElements.length}개`, 'info');
+                    
+                    markerElements.forEach((element, index) => {
+                        log(`  마커 ${index + 1}: ${element.textContent} (${element.style.background})`, 'info');
+                    });
+                    
+                    // AppState에서 마커 객체 확인
+                    const parcels = Array.from(win.AppState.clickParcels.entries());
+                    let visibleMarkers = 0;
+                    let invisibleMarkers = 0;
+                    
+                    parcels.forEach(([pnu, parcelData]) => {
+                        if (parcelData.marker) {
+                            const isVisible = parcelData.marker.getMap() !== null;
+                            if (isVisible) {
+                                visibleMarkers++;
+                                log(`✅ ${pnu}: M 마커 표시됨`, 'success');
+                            } else {
+                                invisibleMarkers++;
+                                log(`❌ ${pnu}: M 마커 숨김됨`, 'error');
+                            }
+                        }
+                    });
+                    
+                    log(`\\n📊 마커 스캔 결과:`, 'info');
+                    log(`  - 표시된 M 마커: ${visibleMarkers}개`, 'success');
+                    log(`  - 숨김된 M 마커: ${invisibleMarkers}개`, 'error');
+                    log(`  - DOM 마커 요소: ${markerElements.length}개`, 'info');
+                    
+                } catch (error) {
+                    log(`❌ 마커 스캔 실패: ${error.message}`, 'error');
+                }
+            }, 1000);
+        }
+        
+        function startMonitoring() {
+            if (monitoringInterval) {
+                log('⚠️ 이미 모니터링 중입니다.', 'warning');
+                return;
+            }
+            
+            log('🔍 실시간 모니터링 시작...', 'info');
+            document.getElementById('monitoring-status').innerHTML = '<span style="color: #28a745;">🟢 모니터링 중...</span>';
+            
+            const win = getMainWindow();
+            if (!win) return;
+            
+            monitoringInterval = setInterval(() => {
+                try {
+                    if (win.closed || !win.AppState) {
+                        stopMonitoring();
+                        return;
+                    }
+                    
+                    const parcels = Array.from(win.AppState.clickParcels.entries());
+                    const savedParcels = parcels.filter(([, data]) => data.data?.isSaved);
+                    const markersWithFlag = parcels.filter(([, data]) => data.hasMarker);
+                    const markersWithObject = parcels.filter(([, data]) => data.marker);
+                    const visibleMarkers = parcels.filter(([, data]) => data.marker && data.marker.getMap() !== null);
+                    
+                    document.getElementById('monitoring-status').innerHTML = `
+                        <span style="color: #28a745;">🟢 모니터링 중...</span><br>
+                        📊 필지: ${parcels.length}개 | 저장됨: ${savedParcels.length}개<br>
+                        🅼 hasMarker: ${markersWithFlag.length}개 | marker객체: ${markersWithObject.length}개 | 표시됨: ${visibleMarkers.length}개
+                    `;
+                    
+                } catch (error) {
+                    log(`❌ 모니터링 오류: ${error.message}`, 'error');
+                    stopMonitoring();
+                }
+            }, 2000);
+        }
+        
+        function stopMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                log('⏹️ 모니터링 중지', 'warning');
+                document.getElementById('monitoring-status').innerHTML = '<span style="color: #dc3545;">🔴 모니터링 중지됨</span>';
+            }
+        }
+        
+        // 초기 메시지
+        log('🎯 M 마커 디버깅 도구가 준비되었습니다.', 'success');
+        log('📋 먼저 메인 페이지(http://localhost:3000)에서 필지를 클릭한 후 디버깅을 시작하세요.', 'info');
+        log('', 'info');
+        
+    </script>
+</body>
+</html>
