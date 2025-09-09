@@ -155,51 +155,42 @@ async function getParcelFromVWorld(lat, lng) {
     return null;
 }
 
-function callVWorldAPI(lat, lng, apiKey) {
-    return new Promise((resolve, reject) => {
-        const callbackName = `vworld_callback_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-        const script = document.createElement('script');
+async function callVWorldAPI(lat, lng, apiKey) {
+    try {
+        console.log(`🚀 프록시를 통한 VWorld API 호출: ${lat}, ${lng}`);
         
-        window[callbackName] = function(data) {
-            try {
-                if (data.response && data.response.status === 'OK' && data.response.result) {
-                    const features = data.response.result.featureCollection?.features;
-                    if (features && features.length > 0) {
-                        const feature = features[0];
-                        console.log(`📋 필지 발견! 전체 속성:`, feature.properties);
-                        console.log(`🔍 PNU 확인: PNU=${feature.properties?.PNU}, pnu=${feature.properties?.pnu}, A_PNU=${feature.properties?.A_PNU}`);
-                        resolve(feature);
-                    } else {
-                        resolve(null);
-                    }
-                } else {
-                    resolve(null);
-                }
-            } finally {
-                document.head.removeChild(script);
-                delete window[callbackName];
+        // 프록시 서버를 통해 VWorld API 호출
+        const proxyUrl = `/api/vworld-proxy?lat=${lat}&lng=${lng}&apiKey=${apiKey}`;
+        
+        const response = await fetch(proxyUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
             }
-        };
+        });
+
+        if (!response.ok) {
+            throw new Error(`프록시 서버 오류: ${response.status}`);
+        }
+
+        const data = await response.json();
         
-        const url = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LP_PA_CBND_BUBUN&key=${apiKey}&geometry=true&geomFilter=POINT(${lng} ${lat})&size=10&format=json&crs=EPSG:4326&callback=${callbackName}`;
-        
-        script.src = url;
-        script.onerror = () => {
-            document.head.removeChild(script);
-            delete window[callbackName];
-            reject(new Error('JSONP 요청 실패'));
-        };
-        
-        document.head.appendChild(script);
-        
-        setTimeout(() => {
-            if (document.head.contains(script)) {
-                document.head.removeChild(script);
-                delete window[callbackName];
-                reject(new Error('타임아웃'));
+        if (data.response && data.response.status === 'OK' && data.response.result) {
+            const features = data.response.result.featureCollection?.features;
+            if (features && features.length > 0) {
+                const feature = features[0];
+                console.log(`📋 필지 발견! 전체 속성:`, feature.properties);
+                console.log(`🔍 PNU 확인: PNU=${feature.properties?.PNU}, pnu=${feature.properties?.pnu}, A_PNU=${feature.properties?.A_PNU}`);
+                return feature;
             }
-        }, 10000);
-    });
+        }
+        
+        return null;
+        
+    } catch (error) {
+        console.error(`❌ 프록시 API 호출 실패:`, error.message);
+        throw error;
+    }
 }
 
 // ============================
