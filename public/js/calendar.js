@@ -2,10 +2,10 @@
 let isCalendarVisible = false;
 let isCalendarMaximized = false;
 
-// 구글 캘린더 자동 연동
+// 구글 캘린더 자동 연동 - 임시 비활성화
 async function initGoogleCalendar() {
-    // 로그인된 경우에만 실행
-    if (!GoogleAuth || !GoogleAuth.isAuthenticated()) return;
+    // 구글 인증 비활성화로 인한 임시 스킵
+    return;
     
     try {
         // 액세스 토큰이 없으면 기늤 (처음에는 자동 연동 안함)
