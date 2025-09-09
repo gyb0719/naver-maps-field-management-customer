@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>브라우저 콘솔 디버깅</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>🎯 브라우저 콘솔 직접 디버깅</h1>
+    
+    <p>다음 단계를 따라하세요:</p>
+    
+    <ol>
+        <li><strong>http://localhost:3000</strong> 을 별도 탭에서 열기</li>
+        <li><strong>필지 클릭</strong> → 색상 선택 → 클릭하여 색칠</li>
+        <li><strong>필지 정보 입력 → 저장</strong> (M 마커 생성)</li>
+        <li><strong>F12 → Console</strong> 탭 열기</li>
+        <li>아래 코드들을 차례로 복사해서 콘솔에 실행:</li>
+    </ol>
+    
+    <h3>🔍 1단계: 현재 상태 확인</h3>
+    <pre style="background: #f0f0f0; padding: 10px; border-radius: 4px;">
+// 현재 상태 확인
+console.log('=== 현재 상태 ===');
+console.log('AppState.searchMode:', AppState.searchMode);
+console.log('클릭 필지 수:', AppState.clickParcels.size);
+
+// 필지별 상세 상태
+AppState.clickParcels.forEach((data, pnu) => {
+    console.log(`필지 ${pnu}:`, {
+        polygon: !!data.polygon,
+        polygonVisible: data.polygon ? data.polygon.getMap() !== null : false,
+        marker: !!data.marker,
+        markerVisible: data.marker ? data.marker.getMap() !== null : false
+    });
+});
+    </pre>
+    
+    <h3>🔍 2단계: 검색 토글 함수 확인</h3>
+    <pre style="background: #f0f0f0; padding: 10px; border-radius: 4px;">
+// 어떤 toggleSearchMode 함수가 사용되는지 확인
+console.log('=== toggleSearchMode 함수 확인 ===');
+console.log('window.toggleSearchMode:', typeof window.toggleSearchMode);
+console.log('AppCore.toggleSearchMode:', typeof AppCore?.toggleSearchMode);
+console.log('search.js 함수:', window.toggleSearchMode.toString().substring(0, 200));
+    </pre>
+    
+    <h3>🔍 3단계: app-core.js 함수 직접 호출</h3>
+    <pre style="background: #f0f0f0; padding: 10px; border-radius: 4px;">
+// app-core.js의 함수 직접 호출
+console.log('=== app-core.js 함수 직접 호출 ===');
+AppCore.toggleSearchMode();
+
+// 결과 확인
+setTimeout(() => {
+    console.log('검색 모드 after:', AppState.searchMode);
+    AppState.clickParcels.forEach((data, pnu) => {
+        console.log(`필지 ${pnu} after:`, {
+            polygonVisible: data.polygon ? data.polygon.getMap() !== null : false,
+            markerVisible: data.marker ? data.marker.getMap() !== null : false
+        });
+    });
+}, 1000);
+    </pre>
+    
+    <h3>🔍 4단계: 직접 숨김 함수 호출</h3>
+    <pre style="background: #f0f0f0; padding: 10px; border-radius: 4px;">
+// 직접 숨김 함수 호출
+console.log('=== 직접 숨김 함수 호출 ===');
+AppCore.hideClickParcels();
+
+// 결과 확인
+AppState.clickParcels.forEach((data, pnu) => {
+    console.log(`필지 ${pnu} 숨김 후:`, {
+        polygonVisible: data.polygon ? data.polygon.getMap() !== null : false,
+        markerVisible: data.marker ? data.marker.getMap() !== null : false
+    });
+});
+    </pre>
+    
+    <h3>🔍 5단계: 다시 표시 함수 호출</h3>
+    <pre style="background: #f0f0f0; padding: 10px; border-radius: 4px;">
+// 다시 표시 함수 호출
+console.log('=== 다시 표시 함수 호출 ===');
+AppCore.showClickParcels();
+
+// 최종 결과 확인
+AppState.clickParcels.forEach((data, pnu) => {
+    console.log(`필지 ${pnu} 표시 후:`, {
+        polygonVisible: data.polygon ? data.polygon.getMap() !== null : false,
+        markerVisible: data.marker ? data.marker.getMap() !== null : false
+    });
+});
+    </pre>
+    
+    <p style="color: #dc3545; font-weight: bold;">
+        ⚠️ 각 단계별로 결과를 확인하여 어느 단계에서 문제가 발생하는지 찾아주세요!
+    </p>
+    
+</body>
+</html>

@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.querySelectorAll('.color-item').forEach(item => {
         item.addEventListener('click', function() {
             currentColor = this.dataset.color;
+            window.currentColor = currentColor; // ✅ ULTRATHINK: window.currentColor 동기화
             document.getElementById('currentColor').style.background = currentColor;
             console.log('색상 선택:', currentColor);
             

@@ -288,27 +288,35 @@ class ViewportRenderer {
     }
 
     // 필지 폴리곤 생성
-    createParcelPolygon(parcel) {
+    createParcelPolygon(parcel, shouldAddToMap = true) {
         const geometry = parcel.geometry || parcel.coordinates;
         if (!geometry) return null;
 
         let paths = [];
         
         try {
-            if (geometry.type === 'Polygon' && geometry.coordinates && geometry.coordinates[0]) {
+            if (geometry.type === 'MultiPolygon' && geometry.coordinates && geometry.coordinates[0] && geometry.coordinates[0][0]) {
+                // 🎯 ULTRATHINK: MultiPolygon 처리 - coordinates[0][0] 사용
+                paths = geometry.coordinates[0][0].map(coord => 
+                    new naver.maps.LatLng(coord[1], coord[0])
+                );
+                console.log('🔧 MultiPolygon 좌표 처리 완료, paths 개수:', paths.length);
+            } else if (geometry.type === 'Polygon' && geometry.coordinates && geometry.coordinates[0]) {
                 paths = geometry.coordinates[0].map(coord => 
                     new naver.maps.LatLng(coord[1], coord[0])
                 );
+                console.log('🔧 Polygon 좌표 처리 완료, paths 개수:', paths.length);
             } else if (Array.isArray(geometry)) {
                 paths = geometry.map(coord => 
                     new naver.maps.LatLng(coord.lat || coord[1], coord.lng || coord[0])
                 );
+                console.log('🔧 배열 좌표 처리 완료, paths 개수:', paths.length);
             }
             
             if (paths.length === 0) return null;
             
             const polygon = new naver.maps.Polygon({
-                map: this.map,
+                map: shouldAddToMap ? this.map : null, // 🎯 ULTRATHINK: 조건부 지도 추가
                 paths: paths,
                 fillColor: parcel.color || '#FF0000',
                 fillOpacity: 0.3,

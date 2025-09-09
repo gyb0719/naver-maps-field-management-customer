@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>보라색 폴리곤 디버그 테스트</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial; }
+        #map { width: 800px; height: 600px; border: 2px solid #ccc; }
+        .debug-info { margin: 20px 0; padding: 15px; background: #f0f0f0; border-radius: 8px; }
+        .button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 보라색 폴리곤 복원 디버그 테스트</h1>
+    
+    <div class="debug-info">
+        <h3>테스트 절차:</h3>
+        <p>1. 지도가 로드되면 "폴리곤 생성 테스트" 버튼 클릭</p>
+        <p>2. 보라색 폴리곤이 나타나는지 확인</p>
+        <p>3. 페이지 새로고침 후 복원 확인</p>
+    </div>
+
+    <button class="button" onclick="createTestPolygon()">폴리곤 생성 테스트</button>
+    <button class="button" onclick="clearPolygons()">폴리곤 지우기</button>
+    <button class="button" onclick="checkSessionStorage()">sessionStorage 확인</button>
+    
+    <div id="map"></div>
+    <div id="debug-log" class="debug-info"></div>
+
+    <script type="text/javascript" src="https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=xzbnwd2h1z"></script>
+    <script>
+        let map;
+        let testPolygon;
+        
+        // 디버그 로그 함수
+        function debugLog(message) {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            console.log(message);
+        }
+        
+        // 지도 초기화
+        map = new naver.maps.Map('map', {
+            center: new naver.maps.LatLng(37.56404135733639, 126.97949142849764), // 소공동 87-1 위치
+            zoom: 19
+        });
+        
+        debugLog('🗺️ 네이버 지도 로드 완료');
+        
+        // 테스트 폴리곤 생성 함수
+        function createTestPolygon() {
+            debugLog('🎯 테스트 폴리곤 생성 시작...');
+            
+            // 실제 소공동 87-1 좌표 데이터
+            const coords = [
+                [126.97949142849764,37.56404135733639],
+                [126.97950645745438,37.56404838785255],
+                [126.97940522541276,37.56415983027095],
+                [126.9792968038194,37.56427784846614],
+                [126.9793491663617,37.564306608863824],
+                [126.97938634065025,37.564560712708165],
+                [126.9794353377243,37.56460325756411],
+                [126.97947435588326,37.56463200639821],
+                [126.97950628126367,37.56464723906524],
+                [126.97952335917545,37.56465372936725],
+                [126.97953810727759,37.56465400241038],
+                [126.97954623712707,37.56464355245354],
+                [126.97958739655046,37.564665553242484],
+                [126.9796135409662,37.56467114422635],
+                [126.9796267954074,37.564670065498085],
+                [126.97963771870954,37.56466727445762],
+                [126.97964780593303,37.564659347625195],
+                [126.9796574184852,37.5646489790243],
+                [126.97966255996154,37.564639339395995],
+                [126.9796680748461,37.564630060232105],
+                [126.979695328061,37.56463709298517]
+            ];
+            
+            // 네이버 좌표로 변환
+            const naverCoords = coords.map(coord => new naver.maps.LatLng(coord[1], coord[0]));
+            debugLog(`🔄 좌표 ${coords.length}개 변환 완료`);
+            
+            // 기존 폴리곤 제거
+            if (testPolygon) {
+                testPolygon.setMap(null);
+                debugLog('🗑️ 기존 폴리곤 제거');
+            }
+            
+            // 보라색 폴리곤 생성
+            testPolygon = new naver.maps.Polygon({
+                map: map,
+                paths: naverCoords,
+                fillColor: '#9370DB',
+                fillOpacity: 0.9,
+                strokeColor: '#6A0DAD',
+                strokeOpacity: 1,
+                strokeWeight: 3
+            });
+            
+            debugLog('🟣 보라색 폴리곤 생성 완료');
+            debugLog(`   - fillColor: #9370DB`);
+            debugLog(`   - fillOpacity: 0.9`);
+            debugLog(`   - strokeColor: #6A0DAD`);
+            debugLog(`   - strokeWeight: 3`);
+            
+            // sessionStorage에 저장
+            const sessionData = {
+                "1114011100100870001": {
+                    data: {
+                        type: "Feature",
+                        geometry: {
+                            type: "MultiPolygon",
+                            coordinates: [[coords]]
+                        },
+                        properties: {
+                            pnu: "1114011100100870001",
+                            jibun: "87-1대",
+                            addr: "서울특별시 중구 소공동 87-1"
+                        }
+                    },
+                    geometry: {
+                        type: "MultiPolygon",
+                        coordinates: [[coords]]
+                    },
+                    properties: {
+                        pnu: "1114011100100870001",
+                        jibun: "87-1대"
+                    },
+                    displayText: "소공동 87-1",
+                    timestamp: Date.now()
+                }
+            };
+            
+            sessionStorage.setItem('searchParcels', JSON.stringify(sessionData));
+            debugLog('💾 sessionStorage에 데이터 저장 완료');
+        }
+        
+        // 폴리곤 지우기
+        function clearPolygons() {
+            if (testPolygon) {
+                testPolygon.setMap(null);
+                testPolygon = null;
+                debugLog('🗑️ 모든 폴리곤 제거');
+            }
+        }
+        
+        // sessionStorage 확인
+        function checkSessionStorage() {
+            const data = sessionStorage.getItem('searchParcels');
+            if (data) {
+                const parsed = JSON.parse(data);
+                debugLog('💾 sessionStorage 데이터 존재:');
+                debugLog(`   - 키 개수: ${Object.keys(parsed).length}`);
+                Object.keys(parsed).forEach(key => {
+                    debugLog(`   - ${key}: ${parsed[key].displayText || '라벨없음'}`);
+                });
+            } else {
+                debugLog('💾 sessionStorage 데이터 없음');
+            }
+        }
+        
+        // 페이지 로드 시 복원 테스트
+        window.addEventListener('load', function() {
+            debugLog('🔄 페이지 로드 완료 - 복원 테스트 시작');
+            checkSessionStorage();
+        });
+    </script>
+</body>
+</html>

@@ -86,10 +86,10 @@ function initMap() {
         });
     });
     
-    // 지도 클릭 이벤트
+    // 🎯 ULTRATHINK: 지도 클릭 이벤트는 app-core.js에서 통합 처리
+    // 로드뷰 모드만 여기서 처리
     naver.maps.Event.addListener(map, 'click', function(e) {
         const coord = e.coord;
-        console.log('클릭 좌표:', coord.lat(), coord.lng());
         
         // 🎯 ULTRATHINK: 로드뷰 모드 체크 - 활성화된 버튼으로 판단
         const activeButton = document.querySelector('.map-type-btn.active');
@@ -99,17 +99,12 @@ function initMap() {
             // 로드뷰 모드: 클릭한 위치의 로드뷰 표시
             console.log('📍 로드뷰 모드: 클릭 위치에서 거리뷰 표시');
             showStreetView(coord);
+            // 로드뷰 모드에서는 다른 처리 중단
             return;
         }
         
-        // 검색 모드에서는 클릭으로 필지를 추가하지 않음
-        if (window.currentMode === 'search') {
-            console.log('검색 모드에서는 클릭으로 필지를 추가하지 않습니다.');
-            return;
-        }
-        
-        // 클릭 모드일 때만 Vworld API로 필지 정보 조회
-        getParcelInfo(coord.lat(), coord.lng());
+        // 🎯 ULTRATHINK: 일반 모드는 app-core.js의 통합 핸들러가 처리
+        // (app-core.js에서 별도로 클릭 이벤트 등록함)
     });
     
     // 지도 이동 시 위치 저장 (ViewportRenderer가 필지 렌더링 담당)
@@ -590,6 +585,20 @@ window.onload = function() {
                         if (typeof loadSearchResultsFromStorage === 'function') {
                             loadSearchResultsFromStorage();
                             console.log('💎 저장된 검색 결과 복원 시도');
+                        }
+                        
+                        // 🎯 ULTRATHINK: 임시 색칠 데이터 복원 (새로고침 후에도 색칠 유지)
+                        if (typeof restoreTempParcelColors === 'function') {
+                            restoreTempParcelColors();
+                            console.log('✅ ULTRATHINK: 임시 색칠 데이터 복원 완료');
+                        }
+                        
+                        // 🎯 ULTRATHINK: Early Bootstrap 검색 필지 복원
+                        if (typeof window.earlyRestoreSearchParcels === 'function') {
+                            const restored = window.earlyRestoreSearchParcels();
+                            console.log('✅ ULTRATHINK: Early Bootstrap 검색 필지 복원', restored ? '성공' : '실패');
+                        } else {
+                            console.warn('⚠️ ULTRATHINK: Early Bootstrap 함수 없음');
                         }
                     }, 1500);
                 }

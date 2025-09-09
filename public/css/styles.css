@@ -229,6 +229,8 @@ body {
     box-shadow: 0 0 0 3px #3498db;
 }
 
+/* 필지 목록 패널 관련 스타일 제거됨 */
+
 .current-color {
     display: flex;
     align-items: center;
@@ -1183,4 +1185,373 @@ body {
 
 .panel-body::-webkit-scrollbar-thumb:hover {
     background: #a0aec0;
+}
+
+/* 백업 패널 스타일 */
+.backup-panel {
+    background: white;
+    margin-bottom: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.backup-panel h3 {
+    background: #4299e1;
+    color: white;
+    padding: 0.75rem;
+    margin: 0;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.backup-info {
+    padding: 1rem;
+    background: #f7fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+#lastBackupTime {
+    font-size: 0.75rem;
+    color: #4a5568;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.backup-buttons {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.backup-btn {
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.backup-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.backup-btn {
+    background: #4299e1;
+    color: white;
+}
+
+.backup-btn:hover {
+    background: #3182ce;
+}
+
+.backup-btn.secondary {
+    background: #718096;
+    color: white;
+}
+
+.backup-btn.secondary:hover {
+    background: #4a5568;
+}
+
+.backup-btn.warning {
+    background: #ed8936;
+    color: white;
+}
+
+.backup-btn.warning:hover {
+    background: #dd6b20;
+}
+
+.backup-btn.primary {
+    background: #38a169;
+    color: white;
+}
+
+.backup-btn.primary:hover {
+    background: #2f855a;
+}
+
+.backup-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.backup-status-indicator {
+    padding: 0.75rem;
+    border-top: 1px solid #e2e8f0;
+    background: #f7fafc;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+
+.status-dot.connected {
+    background: #38a169;
+    box-shadow: 0 0 8px rgba(56, 161, 105, 0.4);
+}
+
+.status-dot.connecting {
+    background: #ed8936;
+    animation: pulse 1.5s infinite;
+}
+
+.status-dot.error {
+    background: #e53e3e;
+    box-shadow: 0 0 8px rgba(229, 62, 62, 0.4);
+}
+
+@keyframes pulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.7;
+        transform: scale(1.2);
+    }
+}
+
+.status-text {
+    color: #4a5568;
+    font-weight: 500;
+}
+
+/* 헤더 백업 버튼 스타일 */
+.header-backup-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #38a169;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.header-backup-btn:hover {
+    background: #2f855a;
+    transform: translateY(-1px);
+}
+
+.header-backup-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.connection-indicator {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: white;
+    border-radius: 50%;
+    padding: 2px;
+}
+
+.connection-indicator .status-dot {
+    width: 6px;
+    height: 6px;
+}
+
+/* 플로팅 백업 패널 스타일 */
+.floating-backup-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 320px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border: 1px solid #e2e8f0;
+    z-index: 1000;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.backup-panel-header {
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    color: white;
+    padding: 1rem;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.backup-panel-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.backup-panel-content {
+    padding: 1rem;
+}
+
+.backup-status-mini {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: #f7fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.status-row:last-child {
+    margin-bottom: 0;
+}
+
+.status-label {
+    font-weight: 600;
+    color: #4a5568;
+    min-width: 50px;
+}
+
+.backup-actions-mini {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.backup-btn-mini {
+    padding: 0.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.backup-btn-mini:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.backup-btn-mini.primary {
+    background: #4299e1;
+    color: white;
+}
+
+.backup-btn-mini.primary:hover {
+    background: #3182ce;
+}
+
+.backup-btn-mini.secondary {
+    background: #718096;
+    color: white;
+}
+
+.backup-btn-mini.secondary:hover {
+    background: #4a5568;
+}
+
+.backup-btn-mini.warning {
+    background: #ed8936;
+    color: white;
+}
+
+.backup-btn-mini.warning:hover {
+    background: #dd6b20;
+}
+
+.backup-btn-mini.info {
+    background: #38a169;
+    color: white;
+}
+
+.backup-btn-mini.info:hover {
+    background: #2f855a;
+}
+
+.backup-btn-mini:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+    .floating-backup-panel {
+        width: calc(100% - 40px);
+        max-width: 320px;
+        top: 10px;
+        right: 20px;
+    }
+    
+    .header-backup-btn span {
+        display: none;
+    }
+    
+    .backup-actions-mini {
+        grid-template-columns: 1fr;
+    }
 }

@@ -10,19 +10,36 @@ This is a Naver Maps Field Management Program (네이버 지도 필지 관리 �
 
 ```bash
 # Development server (Express.js)
-node server.js
+node server.js                     # Start main development server
+
+# Alternative development servers
+npm run dev                        # Next.js dev (not used in this static project)
+npm run build                      # Next.js build (not used)
+npm run start                      # Next.js start (not used)
 
 # Testing (Playwright)
-npm test                # Run all tests
-npx playwright test     # Run Playwright tests directly
+npm test                           # Run all tests
+npx playwright test                # Run Playwright tests directly
+npx playwright test --headed       # Run tests with browser visible
+npx playwright test --debug        # Run tests in debug mode
+npx playwright test --ui           # Run tests with Playwright UI
+npx playwright test tests/specific-test.spec.js  # Run single test file
 
-# Note: package.json contains Next.js commands but project uses static Express.js
-npm run dev            # Next.js dev (not used in this static project)
-npm run build          # Next.js build (not used)
-npm run start          # Next.js start (not used)
+# Test development and debugging
+npx playwright codegen             # Generate test code interactively
+npx playwright show-report         # View test report
+
+# Database Setup (Supabase)
+# Run SQL files in order:
+# 1. db/schema-korean.sql          # Core database schema
+# 2. db/migration-functions-final.sql # Migration functions
+# 3. db/setup-complete.sql         # Complete setup
+
+# Environment setup
+cp .env.example .env               # Copy environment template
 ```
 
-The server runs on port 3000 by default, with automatic fallback to port 4000 if 3000 is in use.
+**Server Configuration**: Runs on port 3000 with automatic fallback to port 4000 if occupied. Use `PORT=4000 node server.js` to force specific port.
 
 ## Architecture Overview
 
@@ -33,12 +50,15 @@ The server runs on port 3000 by default, with automatic fallback to port 4000 if
   - `map.js`, `map-init.js` - Naver Maps integration and initialization
   - `parcel.js`, `parcel-manager.js`, `parcel-panel.js` - Parcel data handling and management
   - `data-manager.js` - Hybrid localStorage/Supabase sync system (60k parcels + 30k memos)
-  - `sync-status.js` - Real-time cloud sync status visualization
+  - `data-manager-realtime.js` - Real-time collaborative editing with broadcast channels
   - `search.js` - Address and parcel search functionality
-  - `sheets.js` - Google Sheets integration with batch processing
-  - `auth.js` - Authentication handling
-  - `config.js`, `config-client.js` - API keys and configuration
-  - `ui-manager.js`, `mobile-handler.js` - UI and mobile optimizations
+  - `sheets.js` - Google Sheets integration with 4-tier fallback system
+  - `auth.js` - Google OAuth authentication handling
+  - `config.js`, `config-client.js` - API keys and configuration with ULTRATHINK fallbacks
+  - `viewport-renderer.js` - Performance-optimized polygon rendering
+  - `indexeddb-cache.js` - Browser-level caching for large datasets
+  - `realtime-ui.js` - Real-time status indicators and activity feeds
+  - `mobile-handler.js` - Mobile device optimizations
 
 ### Backend Structure
 - **Express.js server** (`server.js`) with:
@@ -74,23 +94,67 @@ The server runs on port 3000 by default, with automatic fallback to port 4000 if
 
 ## Important Notes
 
-### API Key Management
-- **VWorld API**: 5 keys with intelligent rotation on failure (`5090194F...`, `CEB482F7...`, etc.)
-- **Naver Maps**: Client ID `xzbnwd2h1z` embedded in frontend
-- **Supabase**: Real-time database with row-level security
-- Environment variables should be set in `.env` file
+### API Key Management & Multi-Strategy Systems
+- **VWorld API**: 5 keys with intelligent rotation on failure. CONFIG object validation with hardcoded fallback system prevents "Cannot read properties of undefined" errors
+- **Naver Maps**: Client ID `xzbnwd2h1z` embedded in frontend, geocoding proxy via `/api/naver/geocode`
+- **Supabase**: Real-time database with row-level security, 2-second debounced sync
+  - URL: `https://iccixxihdsvbgbkuwdqj.supabase.co`
+  - Anonymous key embedded in `data-manager.js`
+- **Google Sheets**: Multi-strategy loading (Script injection → iframe → Fetch → Mock API fallback)
+- Environment variables should be set in `.env` file (copy from `.env.example`)
 
 ### Development Workflow
-1. Copy `.env.example` to `.env` and configure API keys
-2. Start server: `node server.js`
-3. Access at `http://localhost:3000` (auto-fallback to :4000)
-4. Monitor sync status via built-in UI indicators
-5. Run tests: `npm test` for end-to-end validation
+1. **Environment Setup**:
+   ```bash
+   cp .env.example .env               # Copy environment template
+   # Edit .env with your API keys (Naver, VWorld, Google)
+   ```
+2. **Start Development**:
+   ```bash
+   node server.js                     # Start server (port 3000, fallback 4000)
+   ```
+3. **Access Application**: Navigate to `http://localhost:3000` (auto-fallback to :4000)
+4. **Monitor Status**: Use built-in UI sync indicators and real-time activity feed
+5. **Run Tests**:
+   ```bash
+   npm test                           # End-to-end validation
+   npx playwright test --ui           # Interactive test runner
+   ```
+
+### Critical Architecture Patterns
+
+#### ULTRATHINK Systems
+This codebase implements several "ULTRATHINK" patterns for robustness:
+- **5-key VWorld API fallback**: Prevents service interruption
+- **Multi-strategy Google API loading**: 4 different loading methods with Mock API fallback
+- **CONFIG safety system**: Runtime validation with hardcoded fallbacks
+- **3-tier data persistence**: localStorage + Supabase + Google Sheets
+
+#### Real-time Data Flow
+- **CustomEvent-based communication**: Components communicate via `parcelDataSaved` events
+- **2-second debounced sync**: Prevents API rate limiting while maintaining responsiveness  
+- **ViewportRenderer optimization**: Large polygon datasets rendered efficiently
+- **IndexedDB caching**: Browser-level persistence for 60k+ parcel records
+
+#### Color-Coding System
+- **Paint mode toggle**: ON/OFF system preserves existing coloring while controlling new additions
+- **Left-click paints, right-click removes**: Direct manipulation interface
+- **8-color palette**: Standardized status classification system
+- **Immediate visual feedback**: Single-click complete coloring (no double-click bugs)
+- **Session preservation**: Temporary coloring saved to sessionStorage and restored on page refresh
+- **Visual distinction**: Temporary coloring (dashed border, 0.5 opacity) vs saved coloring (solid border, 0.7 opacity)
 
 ### Server Features
 - Automatic port resolution if 3000 is occupied
 - VWorld API proxy with CORS handling and 5-key rotation
-- **Hybrid Data System**: localStorage + Supabase + Google Sheets (3-tier backup)
-- **Performance optimizations**: 2-second debounced sync, circuit breaker pattern
-- **Conflict prevention**: Data checksums, version tracking, exponential backoff
 - Development-friendly error logging with categorized error classification
+- Naver Geocoding API proxy at `/api/naver/geocode`
+- Client configuration endpoint at `/api/config`
+
+### Important Implementation Details
+- **ULTRATHINK Philosophy**: Code includes extensive safety systems and fallbacks, marked with `🎯 ULTRATHINK:` comments
+- **Data Flow**: User action → UI update → sessionStorage → 2s debounce → Supabase sync → broadcast → other users
+- **Search Mode Toggle**: Separate click parcels (user-selected) vs search parcels (purple highlighting)
+- **M Markers**: Red "M" markers automatically appear on saved parcels to indicate stored data
+- **Early Bootstrap**: System restores search parcels and temporary coloring on page load via `earlyRestoreSearchParcels()`
+- **Paint Mode**: Global `window.paintModeEnabled` controls whether clicking applies colors

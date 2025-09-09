@@ -81,20 +81,18 @@ async function initializeMap() {
 
 // 지도 이벤트 리스너 설정
 function setupMapEventListeners() {
-    // 지도 클릭 이벤트
+    // 지도 클릭 이벤트 - app-core.js의 통합 시스템 사용
     naver.maps.Event.addListener(map, 'click', function(e) {
-        // 검색 모드에서는 클릭으로 필지를 추가하지 않음
-        if (window.currentMode === 'search') {
-            console.log('검색 모드에서는 클릭으로 필지를 추가하지 않습니다.');
-            return;
-        }
-        
         const latlng = e.coord;
-        console.log('클릭 위치:', latlng.lat(), latlng.lng());
+        console.log('🎯 ULTRATHINK: 지도 클릭 위치:', latlng.lat(), latlng.lng());
         
-        // 클릭 모드일 때만 필지 정보 조회
-        if (window.getParcelInfo) {
-            window.getParcelInfo(latlng.lat(), latlng.lng());
+        // app-core.js의 통합 클릭 핸들러 호출
+        if (window.AppState && window.AppState.handleMapLeftClick) {
+            window.AppState.handleMapLeftClick(e);
+        } else if (window.handleMapLeftClick) {
+            window.handleMapLeftClick(e);
+        } else {
+            console.warn('🚨 ULTRATHINK: 통합 클릭 핸들러를 찾을 수 없음');
         }
     });
 
